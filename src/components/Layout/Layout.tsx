@@ -1,6 +1,14 @@
 import React from "react";
-import { Layout as AntLayout, Menu, Avatar, Dropdown, Space } from "antd";
+import {
+  Layout as AntLayout,
+  Menu,
+  Avatar,
+  Dropdown,
+  Space,
+  message,
+} from "antd";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DashboardOutlined,
   UserOutlined,
@@ -9,16 +17,30 @@ import {
   TagsOutlined,
   PictureOutlined,
   LogoutOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 
 const { Header, Sider, Content } = AntLayout;
 
-export const Layout: React.FC<{ children?: React.ReactNode }> = ({
+const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
   children,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      message.success('Logged out successfully');
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still redirect to login even if logout API call fails
+      navigate('/login');
+    }
+  };
 
   const menuItems = [
     {
@@ -63,6 +85,13 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({
       key: "profile",
       icon: <UserOutlined />,
       label: "Profile",
+      onClick: () => navigate('/profile'),
+    },
+    {
+      key: "settings",
+      icon: <SettingOutlined />,
+      label: "Settings",
+      onClick: () => navigate('/settings'),
     },
     {
       type: "divider",
@@ -71,10 +100,7 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({
       key: "logout",
       icon: <LogoutOutlined />,
       label: "Logout",
-      onClick: () => {
-        // Handle logout
-        navigate("/login");
-      },
+      onClick: handleLogout,
     },
   ];
 
@@ -127,8 +153,17 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({
           <div style={{ fontSize: "18px", fontWeight: "500" }}>Admin Panel</div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Space style={{ cursor: "pointer" }}>
-              <Avatar icon={<UserOutlined />} />
-              <span>Admin User</span>
+              <Avatar 
+                src={user?.avatar} 
+                icon={<UserOutlined />}
+                alt={user?.firstName || user?.email}
+              />
+              <span>
+                {user?.firstName && user?.lastName 
+                  ? `${user.firstName} ${user.lastName}`
+                  : user?.email || 'Admin User'
+                }
+              </span>
             </Space>
           </Dropdown>
         </Header>
@@ -141,3 +176,5 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({
     </AntLayout>
   );
 };
+
+export default LayoutComponent;

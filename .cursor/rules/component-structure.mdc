@@ -1,0 +1,126 @@
+# Component Structure Rule
+
+## Folder Structure Convention
+
+The admin-frontend project uses a specific folder structure for all components:
+
+```
+ComponentName/
+├── ComponentName.tsx    # Main React component implementation
+├── index.ts             # Re-export barrel file
+└── [optional files]
+    ├── ComponentName.styles.ts
+    ├── ComponentName.test.tsx
+    ├── ComponentName.stories.tsx
+    └── types.ts
+```
+
+## Implementation Guidelines
+
+### 1. Component File
+- **Name**: `ComponentName.tsx` (PascalCase matching folder name)
+- **Content**: Main React component implementation
+- **Export**: Default export of the component
+
+```tsx
+// ComponentName/ComponentName.tsx
+import React from 'react'
+
+interface ComponentNameProps {
+  // Props interface
+}
+
+const ComponentName: React.FC<ComponentNameProps> = ({ ...props }) => {
+  return (
+    // Component JSX
+  )
+}
+
+export default ComponentName
+```
+
+### 2. Index File (Barrel Export)
+- **Name**: `index.ts`
+- **Purpose**: Re-export component for clean imports
+- **Content**: Named export from component file
+
+```tsx
+// ComponentName/index.ts
+export { default } from './ComponentName'
+export type { ComponentNameProps } from './ComponentName'
+```
+
+### 3. Import Usage
+- Import components directly from folder path
+- No need to specify `ComponentName.tsx` file
+
+```tsx
+// Usage in other components
+import ComponentName from '@/components/ComponentName'
+// or
+import { ComponentName } from '@/components/ComponentName'
+```
+
+## Examples
+
+### Pages Structure
+```
+src/pages/
+├── Dashboard/
+│   ├── Dashboard.tsx
+│   └── index.ts
+├── Login/
+│   ├── Login.tsx
+│   └── index.ts
+└── Users/
+    ├── Users.tsx
+    ├── UsersCreate.tsx
+    ├── UsersEdit.tsx
+    └── index.ts
+```
+
+### Components Structure
+```
+src/components/
+├── Layout/
+│   ├── Layout.tsx
+│   └── index.ts
+├── AuthGuard/
+│   ├── AuthGuard.tsx
+│   └── index.ts
+└── shared/
+    ├── Button/
+    │   ├── Button.tsx
+    │   └── index.ts
+    └── Modal/
+        ├── Modal.tsx
+        └── index.ts
+```
+
+## Benefits
+
+1. **Clean Imports**: Import from folder path, not specific files
+2. **Consistency**: Uniform structure across all components
+3. **Scalability**: Easy to add additional files (styles, tests, stories)
+4. **Barrel Exports**: Centralized export management
+5. **Type Safety**: Proper TypeScript re-exports
+
+## Enforcement Rules
+
+- ✅ Components must have matching folder and file names
+- ✅ Always include `index.ts` for re-exports
+- ✅ Use default export in component file
+- ✅ Use named export in index file
+- ❌ Avoid direct imports from `.tsx` files
+- ❌ Don't mix multiple components in one folder
+
+## File Creation Template
+
+When creating a new component:
+
+1. Create folder: `ComponentName/`
+2. Create `ComponentName.tsx` with React component
+3. Create `index.ts` with re-export
+4. Add optional files as needed
+
+This structure ensures consistent, maintainable, and scalable component organization throughout the admin-frontend project.

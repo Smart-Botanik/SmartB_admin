@@ -1,15 +1,15 @@
-import React from 'react'
-import { Card, Row, Col, Statistic, List, Avatar, Typography } from 'antd'
+import React from "react";
+import { Card, Row, Col, Statistic, List, Avatar, Typography } from "antd";
 import {
   UserOutlined,
   FileTextOutlined,
   TagsOutlined,
   ShoppingOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons";
 
-const { Title } = Typography
+const { Title } = Typography;
 
-export const DashboardPage: React.FC = () => {
+const DashboardPage: React.FC = () => {
   return (
     <div>
       <Title level={2}>Dashboard</Title>
@@ -21,7 +21,7 @@ export const DashboardPage: React.FC = () => {
               title="Total Users"
               value={1128}
               prefix={<UserOutlined />}
-              valueStyle={{ color: '#3f8600' }}
+              valueStyle={{ color: "#3f8600" }}
             />
           </Card>
         </Col>
@@ -31,7 +31,7 @@ export const DashboardPage: React.FC = () => {
               title="Total Plants"
               value={456}
               prefix={<FileTextOutlined />}
-              valueStyle={{ color: '#1890ff' }}
+              valueStyle={{ color: "#1890ff" }}
             />
           </Card>
         </Col>
@@ -41,7 +41,7 @@ export const DashboardPage: React.FC = () => {
               title="Total Brands"
               value={89}
               prefix={<TagsOutlined />}
-              valueStyle={{ color: '#722ed1' }}
+              valueStyle={{ color: "#722ed1" }}
             />
           </Card>
         </Col>
@@ -51,7 +51,7 @@ export const DashboardPage: React.FC = () => {
               title="Total Products"
               value={234}
               prefix={<ShoppingOutlined />}
-              valueStyle={{ color: '#eb2f96' }}
+              valueStyle={{ color: "#eb2f96" }}
             />
           </Card>
         </Col>
@@ -62,10 +62,10 @@ export const DashboardPage: React.FC = () => {
           <Card title="Recent Activities">
             <List
               dataSource={[
-                { title: 'New user registered', description: 'John Doe - 2 hours ago' },
-                { title: 'Plant updated', description: 'Tomato Plant - 4 hours ago' },
-                { title: 'New brand added', description: 'Organic Seeds - 6 hours ago' },
-                { title: 'Product created', description: 'Fertilizer Pack - 8 hours ago' },
+                { title: "New user registered", description: "John Doe - 2 hours ago" },
+                { title: "Plant updated", description: "Tomato Plant - 4 hours ago" },
+                { title: "New brand added", description: "Organic Seeds - 6 hours ago" },
+                { title: "Product created", description: "Fertilizer Pack - 8 hours ago" },
               ]}
               renderItem={(item) => (
                 <List.Item>
@@ -83,10 +83,10 @@ export const DashboardPage: React.FC = () => {
           <Card title="System Status">
             <List
               dataSource={[
-                { title: 'Database', status: 'Healthy', color: '#52c41a' },
-                { title: 'API Server', status: 'Running', color: '#52c41a' },
-                { title: 'File Storage', status: 'Active', color: '#52c41a' },
-                { title: 'Cache', status: 'Connected', color: '#52c41a' },
+                { title: "Database", status: "Healthy", color: "#52c41a" },
+                { title: "API Server", status: "Running", color: "#52c41a" },
+                { title: "File Storage", status: "Active", color: "#52c41a" },
+                { title: "Cache", status: "Connected", color: "#52c41a" },
               ]}
               renderItem={(item) => (
                 <List.Item>
@@ -105,5 +105,7 @@ export const DashboardPage: React.FC = () => {
         </Col>
       </Row>
     </div>
-  )
-}
+  );
+};
+
+export default DashboardPage;

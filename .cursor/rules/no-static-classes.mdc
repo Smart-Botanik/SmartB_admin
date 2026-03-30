@@ -1,0 +1,131 @@
+# No Static Classes Rule
+
+## Rule: Avoid Classes with Static Methods
+
+**Instead of using classes with static methods, use plain objects with functions.**
+
+### ❌ Anti-Pattern (Classes with Static Methods)
+
+```typescript
+// BAD: Class with static methods
+export class TokenManager {
+  static parseToken(token: string): JwtPayload | null {
+    // implementation
+  }
+  
+  static isTokenExpired(token: string): boolean {
+    // implementation
+  }
+  
+  static shouldRefreshToken(token: string): boolean {
+    // implementation
+  }
+}
+
+// Usage
+TokenManager.parseToken(token)
+TokenManager.isTokenExpired(token)
+```
+
+### ✅ Preferred Pattern (Plain Objects with Functions)
+
+```typescript
+// GOOD: Separate functions in dedicated files
+// utils/token/parse.ts
+export const parseToken = (token: string): JwtPayload | null => {
+  // implementation
+}
+
+// utils/token/validate.ts
+export const isTokenExpired = (token: string): boolean => {
+  // implementation
+}
+
+export const shouldRefreshToken = (token: string): boolean => {
+  // implementation
+}
+
+// utils/token/index.ts (barrel export)
+export * from './parse'
+export * from './validate'
+
+// Usage
+import { parseToken, isTokenExpired } from '@/utils/token'
+parseToken(token)
+isTokenExpired(token)
+```
+
+## Benefits of Plain Objects
+
+1. **Tree Shaking**: Bundlers can eliminate unused functions
+2. **Better Testing**: Individual functions are easier to unit test
+3. **Clearer Intent**: Functions are explicitly designed to be stateless
+4. **Smaller Bundle Size**: No class overhead
+5. **Better TypeScript Inference**: Simpler type inference
+6. **Easier Composition**: Functions can be easily composed
+
+## When to Use Classes
+
+Only use classes when you need:
+- **Instance state**: Multiple instances with different state
+- **Inheritance**: Class-based inheritance hierarchy
+- **Private fields**: True encapsulation with private members
+- **Lifecycle methods**: Constructor/destructor patterns
+
+## File Organization Pattern
+
+For utilities that were previously in static classes, organize them by functionality:
+
+```
+utils/
+├── token/
+│   ├── parse.ts          # Token parsing functions
+│   ├── validate.ts       # Token validation functions
+│   ├── storage.ts        # Token storage functions
+│   └── index.ts          # Barrel exports
+├── auth/
+│   ├── helpers.ts        # Auth helper functions
+│   ├── validators.ts     # Auth validation functions
+│   └── index.ts
+└── api/
+    ├── client.ts         # API client functions
+    ├── interceptors.ts   # Request/response interceptors
+    └── index.ts
+```
+
+## Migration Strategy
+
+1. **Identify static classes** in the codebase
+2. **Create new folder structure** based on functionality
+3. **Split methods into separate files** by concern
+4. **Create barrel exports** in index.ts
+5. **Update imports** throughout the codebase
+6. **Remove old class files**
+
+## Example Migration
+
+### Before (Static Class)
+```typescript
+// utils/token.ts
+export class TokenManager {
+  static parseToken(token: string) { /* ... */ }
+  static isTokenExpired(token: string) { /* ... */ }
+  static shouldRefreshToken(token: string) { /* ... */ }
+}
+```
+
+### After (Plain Functions)
+```typescript
+// utils/token/parse.ts
+export const parseToken = (token: string) => { /* ... */ }
+
+// utils/token/validate.ts
+export const isTokenExpired = (token: string) => { /* ... */ }
+export const shouldRefreshToken = (token: string) => { /* ... */ }
+
+// utils/token/index.ts
+export { parseToken } from './parse'
+export { isTokenExpired, shouldRefreshToken } from './validate'
+```
+
+This rule ensures cleaner, more maintainable, and more performant code by favoring functional patterns over static class patterns.
