@@ -97,3 +97,5 @@ temp/
 
 # Vite
 .vite/
+dist-ssr
+*.local

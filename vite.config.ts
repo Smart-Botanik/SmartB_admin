@@ -1,22 +1,74 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  server: {
-    port: 5174,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+  const env = loadEnv(mode, process.cwd(), "");
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
     },
-  },
-})
+    server: {
+      port: 5174,
+      host: true, // Allow external connections
+      proxy: {
+        "/api": {
+          target: env.VITE_API_URL || "http://localhost:3001",
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    },
+    build: {
+      // Production build optimizations
+      target: "es2020",
+      outDir: "dist",
+      assetsDir: "assets",
+      sourcemap: mode === "development",
+      minify: mode === "production" ? "terser" : false,
+      terserOptions: {
+        compress: {
+          drop_console: mode === "production",
+          drop_debugger: mode === "production",
+        },
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split vendor chunks for better caching
+            vendor: ["react", "react-dom"],
+            antd: ["antd"],
+            refine: ["@refinedev/core", "@refinedev/antd"],
+          },
+        },
+      },
+      // Chunk size warning limit (in kbytes)
+      chunkSizeWarningLimit: 1000,
+    },
+    optimizeDeps: {
+      // Pre-bundle dependencies for faster development
+      include: [
+        "react",
+        "react-dom",
+        "antd",
+        "@refinedev/core",
+        "@refinedev/antd",
+        "@refinedev/react-router-v6",
+        "@refinedev/simple-rest",
+        "react-router-dom",
+        "@ant-design/icons",
+      ],
+    },
+    define: {
+      // Make env variables available to the app
+      __APP_ENV__: JSON.stringify(env.VITE_APP_ENV),
+    },
+  };
+});

@@ -11,8 +11,9 @@ import "@refinedev/antd/dist/reset.css";
 import { Layout } from "@/components/Layout";
 import { DashboardPage } from "@/pages/Dashboard";
 import { LoginPage } from "@/pages/Login";
+import { envConfig } from "@/config/env";
 
-const API_URL = "http://localhost:3001/api";
+const API_URL = envConfig.apiUrl;
 
 const App: React.FC = () => {
   return (

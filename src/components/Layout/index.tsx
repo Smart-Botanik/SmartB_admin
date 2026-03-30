@@ -1,6 +1,6 @@
-import React from 'react'
-import { Layout as AntLayout, Menu, Avatar, Dropdown, Space } from 'antd'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import React from "react";
+import { Layout as AntLayout, Menu, Avatar, Dropdown, Space } from "antd";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   DashboardOutlined,
   UserOutlined,
@@ -9,95 +9,98 @@ import {
   TagsOutlined,
   PictureOutlined,
   LogoutOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons";
+import type { MenuProps } from "antd";
 
-const { Header, Sider, Content } = AntLayout
+const { Header, Sider, Content } = AntLayout;
 
-export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const navigate = useNavigate()
-  const location = useLocation()
+export const Layout: React.FC<{ children?: React.ReactNode }> = ({
+  children,
+}) => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const menuItems = [
     {
-      key: '/',
+      key: "/",
       icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      label: "Dashboard",
     },
     {
-      key: '/users',
+      key: "/users",
       icon: <UserOutlined />,
-      label: 'Users',
+      label: "Users",
     },
     {
-      key: '/plants',
+      key: "/plants",
       icon: <FileTextOutlined />,
-      label: 'Plants',
+      label: "Plants",
     },
     {
-      key: '/diaries',
+      key: "/diaries",
       icon: <FileTextOutlined />,
-      label: 'Diaries',
+      label: "Diaries",
     },
     {
-      key: '/brands',
+      key: "/brands",
       icon: <TagsOutlined />,
-      label: 'Brands',
+      label: "Brands",
     },
     {
-      key: '/products',
+      key: "/products",
       icon: <ShoppingOutlined />,
-      label: 'Products',
+      label: "Products",
     },
     {
-      key: '/media',
+      key: "/media",
       icon: <PictureOutlined />,
-      label: 'Media',
+      label: "Media",
     },
-  ]
+  ];
 
-  const userMenuItems = [
+  const userMenuItems: MenuProps["items"] = [
     {
-      key: 'profile',
+      key: "profile",
       icon: <UserOutlined />,
-      label: 'Profile',
+      label: "Profile",
     },
     {
-      type: 'divider',
+      type: "divider",
     },
     {
-      key: 'logout',
+      key: "logout",
       icon: <LogoutOutlined />,
-      label: 'Logout',
+      label: "Logout",
       onClick: () => {
         // Handle logout
-        navigate('/login')
+        navigate("/login");
       },
     },
-  ]
+  ];
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
+    <AntLayout style={{ minHeight: "100vh" }}>
       <Sider
         breakpoint="lg"
         collapsedWidth="0"
         onBreakpoint={(broken) => {
-          console.log(broken)
+          console.log(broken);
         }}
         onCollapse={(collapsed, type) => {
-          console.log(collapsed, type)
+          console.log(collapsed, type);
         }}
       >
         <div
           style={{
             height: 32,
             margin: 16,
-            background: 'rgba(255, 255, 255, 0.3)',
+            background: "rgba(255, 255, 255, 0.3)",
             borderRadius: 6,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 'bold',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "bold",
           }}
         >
           Growing App
@@ -113,28 +116,28 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
       <AntLayout>
         <Header
           style={{
-            padding: '0 24px',
-            background: '#fff',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 1px 4px rgba(0,21,41,.08)',
+            padding: "0 24px",
+            background: "#fff",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: "0 1px 4px rgba(0,21,41,.08)",
           }}
         >
-          <div style={{ fontSize: '18px', fontWeight: '500' }}>
-            Admin Panel
-          </div>
+          <div style={{ fontSize: "18px", fontWeight: "500" }}>Admin Panel</div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
+            <Space style={{ cursor: "pointer" }}>
               <Avatar icon={<UserOutlined />} />
               <span>Admin User</span>
             </Space>
           </Dropdown>
         </Header>
-        <Content style={{ margin: '24px 16px', padding: 24, background: '#fff' }}>
+        <Content
+          style={{ margin: "24px 16px", padding: 24, background: "#fff" }}
+        >
           {children || <Outlet />}
         </Content>
       </AntLayout>
     </AntLayout>
-  )
-}
+  );
+};
