@@ -5,8 +5,10 @@ import {
   RefreshTokenRequest,
   RefreshTokenResponse,
   ApiError,
+  STORAGE_KEYS,
 } from "@/types/auth";
 import { envConfig } from "@/config/env";
+import { getAccessToken, getRefreshToken, clearTokens } from "@/utils/token";
 
 class AuthApiService {
   private api: AxiosInstance;
@@ -25,7 +27,7 @@ class AuthApiService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem("admin_access_token");
+        const token = getAccessToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -48,14 +50,14 @@ class AuthApiService {
 
           try {
             await this.refreshToken();
-            const token = localStorage.getItem("admin_access_token");
+            const token = getAccessToken();
             if (token && originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${token}`;
             }
             return this.api(originalRequest);
           } catch (refreshError) {
             // Refresh failed, clear tokens and redirect to login
-            this.clearTokens();
+            clearTokens();
             window.location.href = "/login";
             return Promise.reject(refreshError);
           }
@@ -97,7 +99,7 @@ class AuthApiService {
       // Don't throw error for logout, just log it
       console.error("Logout error:", error);
     } finally {
-      this.clearTokens();
+      clearTokens();
     }
   }
 
@@ -106,7 +108,7 @@ class AuthApiService {
    */
   async refreshToken(): Promise<RefreshTokenResponse> {
     try {
-      const refreshToken = localStorage.getItem("admin_refresh_token");
+      const refreshToken = getRefreshToken();
       if (!refreshToken) {
         throw new Error("No refresh token available");
       }
@@ -119,15 +121,18 @@ class AuthApiService {
       );
 
       // Update the access token in storage
-      localStorage.setItem("admin_access_token", response.data.accessToken);
       localStorage.setItem(
-        "admin_token_expires_at",
+        STORAGE_KEYS.ACCESS_TOKEN,
+        response.data.accessToken,
+      );
+      localStorage.setItem(
+        STORAGE_KEYS.TOKEN_EXPIRES_AT,
         response.data.expiresAt.toString(),
       );
 
       return response.data;
     } catch (error) {
-      this.clearTokens();
+      clearTokens();
       throw this.handleError(error);
     }
   }
@@ -238,12 +243,12 @@ class AuthApiService {
   /**
    * Clear all stored tokens
    */
-  private clearTokens(): void {
-    localStorage.removeItem("admin_access_token");
-    localStorage.removeItem("admin_refresh_token");
-    localStorage.removeItem("admin_token_expires_at");
-    localStorage.removeItem("admin_user_data");
-  }
+  // private clearTokens(): void {
+  //   localStorage.removeItem("admin_access_token");
+  //   localStorage.removeItem("admin_refresh_token");
+  //   localStorage.removeItem("admin_token_expires_at");
+  //   localStorage.removeItem("admin_user_data");
+  // }
 
   /**
    * Check if the API is available

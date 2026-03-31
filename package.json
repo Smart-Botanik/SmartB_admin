@@ -21,6 +21,7 @@
     "@refinedev/react-router-v6": "^4.5.4",
     "@refinedev/simple-rest": "^5.0.1",
     "antd": "^5.12.8",
+    "antd-img-crop": "^4.30.0",
     "axios": "^1.6.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -25,7 +25,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   user: User;
-  tokens: AuthTokens;
+  jwt: string; // Backend returns single JWT token
 }
 
 export interface RefreshTokenRequest {

@@ -12,6 +12,7 @@ import {
   storeTokens,
   clearTokens,
   isTokenValid,
+  parseToken,
 } from "@/utils/token";
 import {
   AuthState,
@@ -19,6 +20,7 @@ import {
   LoginRequest,
   User,
   STORAGE_KEYS,
+  AuthTokens,
 } from "@/types/auth";
 
 // Action types
@@ -116,10 +118,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           dispatch({ type: "AUTH_START" });
 
-          // Validate token with backend
+          // First, try to load user data from localStorage for immediate UI
+          const storedUserData = localStorage.getItem(STORAGE_KEYS.USER_DATA);
+          if (storedUserData) {
+            try {
+              const parsedUser = JSON.parse(storedUserData);
+              dispatch({
+                type: "AUTH_SUCCESS",
+                payload: { user: parsedUser },
+              });
+            } catch (parseError) {
+              console.warn("Failed to parse stored user data:", parseError);
+            }
+          }
+
+          // Then validate token with backend and get fresh user data
           const user = await authApi.getCurrentUser();
 
-          // Store user data
+          // Store fresh user data
           localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
 
           dispatch({
@@ -129,14 +145,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error) {
           // Token is invalid, clear everything
           clearTokens();
+          localStorage.removeItem(STORAGE_KEYS.USER_DATA);
           dispatch({
             type: "AUTH_FAILURE",
             payload: { error: "Session expired. Please login again." },
           });
         }
       } else {
-        // Clear any invalid tokens
+        // Clear any invalid tokens and user data
         clearTokens();
+        localStorage.removeItem(STORAGE_KEYS.USER_DATA);
       }
     };
 
@@ -150,10 +168,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const response = await authApi.login(credentials);
 
+      // Validate response structure
+      if (!response || !response.jwt) {
+        throw new Error("Invalid login response: missing JWT token");
+      }
+
+      // Parse JWT to get expiration time
+      const payload = parseToken(response.jwt);
+      if (!payload) {
+        throw new Error("Invalid JWT token format");
+      }
+
+      // Create tokens object from JWT
+      const tokens: AuthTokens = {
+        accessToken: response.jwt,
+        refreshToken: response.jwt, // Using same JWT as refresh token for now
+        expiresAt: payload.exp * 1000, // Convert to milliseconds
+      };
+
       // Store tokens
-      storeTokens(response.tokens);
+      storeTokens(tokens);
 
       // Store user data
+      if (!response.user) {
+        throw new Error("Invalid login response: missing user data");
+      }
+
       localStorage.setItem(
         STORAGE_KEYS.USER_DATA,
         JSON.stringify(response.user),
@@ -181,6 +221,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error("Logout error:", error);
     } finally {
       clearTokens();
+      localStorage.removeItem(STORAGE_KEYS.USER_DATA);
       dispatch({ type: "LOGOUT" });
     }
   };

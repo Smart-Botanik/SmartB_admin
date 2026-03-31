@@ -13,6 +13,7 @@ import { AuthGuard, PublicRoute } from "@/components/AuthGuard";
 import Layout from "@/components/Layout";
 import DashboardPage from "@/pages/Dashboard";
 import LoginPage from "@/pages/Login";
+import MediaLibrary from "@/pages/Media";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -66,6 +67,13 @@ const App: React.FC = () => {
               edit: "/products/edit/:id",
               show: "/products/show/:id",
             },
+            {
+              name: "media",
+              list: "/media",
+              create: "/media/create",
+              edit: "/media/edit/:id",
+              show: "/media/show/:id",
+            },
           ]}
           options={{
             syncWithLocation: true,
@@ -99,6 +107,7 @@ const App: React.FC = () => {
                     <Layout>
                       <Routes>
                         <Route index element={<DashboardPage />} />
+                        <Route path="/media" element={<MediaLibrary />} />
                         <Route path="*" element={<ErrorComponent />} />
                       </Routes>
                     </Layout>

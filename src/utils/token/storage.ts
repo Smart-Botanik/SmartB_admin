@@ -6,6 +6,22 @@ import { STORAGE_KEYS } from "@/types/auth";
  */
 export const storeTokens = (tokens: AuthTokens): void => {
   try {
+    if (!tokens) {
+      throw new Error("Tokens object is undefined or null");
+    }
+
+    if (!tokens.accessToken) {
+      throw new Error("Access token is missing");
+    }
+
+    if (!tokens.refreshToken) {
+      throw new Error("Refresh token is missing");
+    }
+
+    if (!tokens.expiresAt) {
+      throw new Error("Expiration time is missing");
+    }
+
     localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
     localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
     localStorage.setItem(
@@ -14,6 +30,7 @@ export const storeTokens = (tokens: AuthTokens): void => {
     );
   } catch (error) {
     console.error("Failed to store tokens:", error);
+    throw error; // Re-throw to let caller handle the error
   }
 };
 
