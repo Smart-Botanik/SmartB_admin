@@ -14,6 +14,7 @@ import Layout from "@/components/Layout";
 import DashboardPage from "@/pages/Dashboard";
 import LoginPage from "@/pages/Login";
 import MediaLibrary from "@/pages/Media";
+import ComponentDemo from "@/pages/ComponentDemo";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -108,6 +109,7 @@ const App: React.FC = () => {
                       <Routes>
                         <Route index element={<DashboardPage />} />
                         <Route path="/media" element={<MediaLibrary />} />
+                        <Route path="/demo" element={<ComponentDemo />} />
                         <Route path="*" element={<ErrorComponent />} />
                       </Routes>
                     </Layout>
