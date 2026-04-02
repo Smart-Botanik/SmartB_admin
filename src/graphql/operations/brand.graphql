@@ -1,0 +1,39 @@
+query Brands($limit: Int, $offset: Int, $query: String, $category: String) {
+  brands(limit: $limit, offset: $offset, query: $query, category: $category) {
+    total
+    items {
+      id
+      name
+      category
+      avatar { id url }
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+mutation CreateBrand($input: CreateBrandInput!) {
+  createBrand(input: $input) {
+    id
+    name
+    category
+    avatar { id url }
+    createdAt
+    updatedAt
+  }
+}
+
+mutation UpdateBrand($id: ID!, $input: UpdateBrandInput!) {
+  updateBrand(id: $id, input: $input) {
+    id
+    name
+    category
+    avatar { id url }
+    createdAt
+    updatedAt
+  }
+}
+
+mutation DeleteBrand($id: ID!) {
+  deleteBrand(id: $id)
+}

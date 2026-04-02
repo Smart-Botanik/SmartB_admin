@@ -1,0 +1,9 @@
+schema: "../packages/contracts/schema/schema.graphql"
+documents: "../packages/contracts/operations/**/*.graphql"
+generates:
+  ./src/generated/graphql.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+config:
+  enumsAsTypes: true

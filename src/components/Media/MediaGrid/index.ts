@@ -10,6 +10,3 @@ export { MediaGridStory } from "./MediaGridStory";
 // Hooks
 export { useMediaGrid } from "./useMediaGrid";
 export { useMediaGridMock } from "./useMediaGridMock";
-
-// Stories (located in __stories__ folder)
-export * from "./__stories__/MediaGrid.stories";

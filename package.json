@@ -13,6 +13,7 @@
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "analyze": "npm run build && npx vite-bundle-analyzer dist/stats.html",
+    "codegen": "graphql-codegen --config codegen.yml",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
@@ -25,11 +26,15 @@
     "antd": "^5.12.8",
     "antd-img-crop": "^4.30.0",
     "axios": "^1.6.2",
+    "graphql": "^16.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.1"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.7",
+    "@graphql-codegen/typescript": "^4.1.6",
+    "@graphql-codegen/typescript-operations": "^4.6.1",
     "@storybook/addon-backgrounds": "^8.6.18",
     "@storybook/addon-controls": "^8.6.18",
     "@storybook/addon-docs": "^8.6.18",
