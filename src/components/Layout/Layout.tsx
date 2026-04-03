@@ -16,6 +16,7 @@ import {
   ShoppingOutlined,
   TagsOutlined,
   PictureOutlined,
+  ThunderboltOutlined,
   LogoutOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
@@ -33,12 +34,12 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
   const handleLogout = async () => {
     try {
       await logout();
-      message.success('Logged out successfully');
-      navigate('/login');
+      message.success("Logged out successfully");
+      navigate("/login");
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       // Still redirect to login even if logout API call fails
-      navigate('/login');
+      navigate("/login");
     }
   };
 
@@ -78,6 +79,11 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       icon: <PictureOutlined />,
       label: "Media",
     },
+    {
+      key: "/events",
+      icon: <ThunderboltOutlined />,
+      label: "Events",
+    },
   ];
 
   const userMenuItems: MenuProps["items"] = [
@@ -85,13 +91,13 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       key: "profile",
       icon: <UserOutlined />,
       label: "Profile",
-      onClick: () => navigate('/profile'),
+      onClick: () => navigate("/profile"),
     },
     {
       key: "settings",
       icon: <SettingOutlined />,
       label: "Settings",
-      onClick: () => navigate('/settings'),
+      onClick: () => navigate("/settings"),
     },
     {
       type: "divider",
@@ -153,16 +159,15 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           <div style={{ fontSize: "18px", fontWeight: "500" }}>Admin Panel</div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Space style={{ cursor: "pointer" }}>
-              <Avatar 
-                src={user?.avatar} 
+              <Avatar
+                src={user?.avatar}
                 icon={<UserOutlined />}
                 alt={user?.firstName || user?.email}
               />
               <span>
-                {user?.firstName && user?.lastName 
+                {user?.firstName && user?.lastName
                   ? `${user.firstName} ${user.lastName}`
-                  : user?.email || 'Admin User'
-                }
+                  : user?.email || "Admin User"}
               </span>
             </Space>
           </Dropdown>

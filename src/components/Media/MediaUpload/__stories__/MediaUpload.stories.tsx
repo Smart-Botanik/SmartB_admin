@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { MediaUpload } from "../MediaUpload";
-import type { MediaUploadResponse } from "../../../services/media";
+import type { MediaUploadResponse } from "../../../../services/media";
 
 // Mock data
 const mockFiles: MediaUploadResponse[] = [

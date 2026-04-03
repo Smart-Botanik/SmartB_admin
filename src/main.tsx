@@ -16,6 +16,7 @@ import LoginPage from "@/pages/Login";
 import MediaLibrary from "@/pages/Media";
 import ComponentDemo from "@/pages/ComponentDemo";
 import BrandsPage from "@/pages/Brands";
+import { EventsListPage, EventEditPage } from "@/pages/Events";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -76,6 +77,11 @@ const App: React.FC = () => {
               edit: "/media/edit/:id",
               show: "/media/show/:id",
             },
+            {
+              name: "events",
+              list: "/events",
+              edit: "/events/edit/:id",
+            },
           ]}
           options={{
             syncWithLocation: true,
@@ -111,6 +117,11 @@ const App: React.FC = () => {
                         <Route index element={<DashboardPage />} />
                         <Route path="/brands" element={<BrandsPage />} />
                         <Route path="/media" element={<MediaLibrary />} />
+                        <Route path="/events" element={<EventsListPage />} />
+                        <Route
+                          path="/events/edit/:id"
+                          element={<EventEditPage />}
+                        />
                         <Route path="/demo" element={<ComponentDemo />} />
                         <Route path="*" element={<ErrorComponent />} />
                       </Routes>
