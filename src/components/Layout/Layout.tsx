@@ -17,8 +17,8 @@ import {
   TagsOutlined,
   PictureOutlined,
   ThunderboltOutlined,
-  LogoutOutlined,
   SettingOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 
@@ -30,6 +30,10 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  const getMenuHref = (path: string) => {
+    return new URL(path, window.location.origin).toString();
+  };
 
   const handleLogout = async () => {
     try {
@@ -47,42 +51,128 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     {
       key: "/",
       icon: <DashboardOutlined />,
-      label: "Dashboard",
+      label: (
+        <a href={getMenuHref("/")} target="_blank" rel="noopener noreferrer">
+          Dashboard
+        </a>
+      ),
     },
     {
       key: "/users",
       icon: <UserOutlined />,
-      label: "Users",
+      label: (
+        <a
+          href={getMenuHref("/users")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Users
+        </a>
+      ),
     },
     {
       key: "/plants",
       icon: <FileTextOutlined />,
-      label: "Plants",
+      label: (
+        <a
+          href={getMenuHref("/plants")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Plants
+        </a>
+      ),
     },
     {
       key: "/diaries",
       icon: <FileTextOutlined />,
-      label: "Diaries",
+      label: (
+        <a
+          href={getMenuHref("/diaries")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Diaries
+        </a>
+      ),
     },
     {
       key: "/brands",
       icon: <TagsOutlined />,
-      label: "Brands",
+      label: (
+        <a
+          href={getMenuHref("/brands")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Brands
+        </a>
+      ),
     },
     {
       key: "/products",
       icon: <ShoppingOutlined />,
-      label: "Products",
+      label: (
+        <a
+          href={getMenuHref("/products")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Products
+        </a>
+      ),
     },
     {
       key: "/media",
       icon: <PictureOutlined />,
-      label: "Media",
+      label: (
+        <a
+          href={getMenuHref("/media")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Media
+        </a>
+      ),
     },
     {
       key: "/events",
       icon: <ThunderboltOutlined />,
-      label: "Events",
+      label: (
+        <a
+          href={getMenuHref("/events")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Events
+        </a>
+      ),
+    },
+    {
+      key: "/registry-tags",
+      icon: <TagsOutlined />,
+      label: (
+        <a
+          href={getMenuHref("/registry-tags")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Registry Tags
+        </a>
+      ),
+    },
+    {
+      key: "/registry",
+      icon: <SettingOutlined />,
+      label: (
+        <a
+          href={getMenuHref("/registry")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Action Path Registry
+        </a>
+      ),
     },
   ];
 
@@ -142,7 +232,6 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
-          onClick={({ key }) => navigate(key)}
         />
       </Sider>
       <AntLayout>

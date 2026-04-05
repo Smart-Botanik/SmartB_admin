@@ -16,7 +16,15 @@ import LoginPage from "@/pages/Login";
 import MediaLibrary from "@/pages/Media";
 import ComponentDemo from "@/pages/ComponentDemo";
 import BrandsPage from "@/pages/Brands";
-import { EventsListPage, EventEditPage } from "@/pages/Events";
+import {
+  EventsListPage,
+  EventEditPage,
+  CreatePlantEventPage,
+} from "@/pages/Events";
+import ActionPathRegistryPage from "@/pages/ActionPathRegistry/ActionPathRegistryPage";
+import ActionPathRegistryUpsertPage from "@/pages/ActionPathRegistry/ActionPathRegistryUpsertPage";
+import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathRegistryEditPage";
+import RegistryTagsPage from "@/pages/RegistryTags";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -118,6 +126,26 @@ const App: React.FC = () => {
                         <Route path="/brands" element={<BrandsPage />} />
                         <Route path="/media" element={<MediaLibrary />} />
                         <Route path="/events" element={<EventsListPage />} />
+                        <Route
+                          path="/events/create-plant"
+                          element={<CreatePlantEventPage />}
+                        />
+                        <Route
+                          path="/registry"
+                          element={<ActionPathRegistryPage />}
+                        />
+                        <Route
+                          path="/registry/new"
+                          element={<ActionPathRegistryUpsertPage />}
+                        />
+                        <Route
+                          path="/registry/edit/:actionPath"
+                          element={<ActionPathRegistryEditPage />}
+                        />
+                        <Route
+                          path="/registry-tags"
+                          element={<RegistryTagsPage />}
+                        />
                         <Route
                           path="/events/edit/:id"
                           element={<EventEditPage />}
