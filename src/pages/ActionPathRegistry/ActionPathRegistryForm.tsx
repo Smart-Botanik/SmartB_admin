@@ -4,6 +4,7 @@ import {
   Card,
   Form,
   Input,
+  InputNumber,
   Select,
   Space,
   Tag,
@@ -19,9 +20,13 @@ const { Text, Title } = Typography;
 
 type FormValues = {
   actionPath: string;
+  groupPath: string;
+  filter: string;
+  description?: string;
   targetType: string;
   mappingJson: string;
   conditionsJson?: string;
+  autoTagRulesJson?: string;
   tagId?: string | null;
 };
 
@@ -30,6 +35,19 @@ type ConditionRuleFormValue = {
   operator?: "lt" | "gt" | "eq" | "lte" | "gte";
   value?: string;
   tagId?: string;
+};
+
+type AutoTagConditionFormValue = {
+  field?: string;
+  operator?: "lt" | "gt" | "eq" | "lte" | "gte";
+  value?: string | number;
+};
+
+type AutoTagRuleFormValue = {
+  name?: string;
+  tag_id?: string;
+  logic?: "AND" | "OR" | null;
+  conditions?: AutoTagConditionFormValue[];
 };
 
 function validateMappingJson(mappingJson: string): string | null {
@@ -61,6 +79,14 @@ export const ActionPathRegistryForm: React.FC<{
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
 
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groups, setGroups] = useState<
+    Array<{ id: string; path: string; description?: string | null }>
+  >([]);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [newGroupPath, setNewGroupPath] = useState<string>("");
+  const [newGroupDescription, setNewGroupDescription] = useState<string>("");
+
   const [tagsLoading, setTagsLoading] = useState(false);
   const [entityTags, setEntityTags] = useState<TagListItem[]>([]);
   const [commonTags, setCommonTags] = useState<TagListItem[]>([]);
@@ -68,9 +94,13 @@ export const ActionPathRegistryForm: React.FC<{
 
   const targetTypeValue = Form.useWatch("targetType", form);
 
+  const groupPathValue = Form.useWatch("groupPath", form);
+
+  const filterValue = Form.useWatch("filter", form);
+
   const mappingJsonValue = Form.useWatch("mappingJson", form);
 
-  const conditionsJsonValue = Form.useWatch("conditionsJson", form);
+  const autoTagRulesJsonValue = Form.useWatch("autoTagRulesJson", form);
 
   const defaultMapping = useMemo(
     () =>
@@ -98,6 +128,99 @@ export const ActionPathRegistryForm: React.FC<{
   const insertTemplate = () => {
     form.setFieldValue("mappingJson", defaultMapping);
     message.success("Template inserted");
+  };
+
+  const loadGroups = async () => {
+    setGroupsLoading(true);
+    try {
+      const resp = await actionPathRegistryService.listGroups();
+      setGroups(resp);
+    } catch (e: any) {
+      message.error(e?.message ?? "Failed to load groups");
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadGroups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const actionPath = String(initialValues?.actionPath ?? "").trim();
+    if (!actionPath) return;
+
+    const parts = actionPath.split(".").filter(Boolean);
+    if (parts.length < 2) {
+      form.setFieldValue("groupPath", "common");
+      form.setFieldValue("filter", parts[0] ?? "");
+      return;
+    }
+
+    const groupPath = parts.slice(0, -1).join(".") || "common";
+    const filter = parts[parts.length - 1] ?? "";
+    form.setFieldValue("groupPath", groupPath);
+    form.setFieldValue("filter", filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues?.actionPath]);
+
+  useEffect(() => {
+    const groupPath = String(groupPathValue ?? "").trim();
+    const filter = String(filterValue ?? "").trim();
+    if (!groupPath || !filter) return;
+    form.setFieldValue("actionPath", `${groupPath}.${filter}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupPathValue, filterValue]);
+
+  const updateAutoTagRule = (idx: number, next: AutoTagRuleFormValue) => {
+    if (!parsedAutoTagRules.arr) {
+      message.error(parsedAutoTagRules.error ?? "Invalid autoTagRulesJson");
+      return;
+    }
+    const arr = [...parsedAutoTagRules.arr];
+    arr[idx] = next;
+    form.setFieldValue("autoTagRulesJson", JSON.stringify(arr, null, 2));
+  };
+
+  const addAutoTagRule = () => {
+    const arr = parsedAutoTagRules.arr ?? [];
+    const next: AutoTagRuleFormValue = {
+      name: "",
+      tag_id: undefined,
+      logic: "AND",
+      conditions: [
+        { field: "", operator: "lt", value: "" },
+        { field: "", operator: "gt", value: "" },
+      ],
+    };
+    form.setFieldValue(
+      "autoTagRulesJson",
+      JSON.stringify([...arr, next], null, 2),
+    );
+  };
+
+  const removeAutoTagRule = (idx: number) => {
+    if (!parsedAutoTagRules.arr) return;
+    const arr = parsedAutoTagRules.arr.filter((_, i) => i !== idx);
+    form.setFieldValue("autoTagRulesJson", JSON.stringify(arr, null, 2));
+  };
+
+  const addCondition = (ruleIdx: number) => {
+    if (!parsedAutoTagRules.arr) return;
+    const rule = parsedAutoTagRules.arr[ruleIdx] ?? {};
+    const conditions = [...(rule.conditions ?? [])];
+    conditions.push({ field: "", operator: "eq", value: "" });
+    updateAutoTagRule(ruleIdx, { ...rule, conditions });
+  };
+
+  const removeCondition = (ruleIdx: number, condIdx: number) => {
+    if (!parsedAutoTagRules.arr) return;
+    const rule = parsedAutoTagRules.arr[ruleIdx] ?? {};
+    const conditions = [...(rule.conditions ?? [])].filter(
+      (_, i) => i !== condIdx,
+    );
+    updateAutoTagRule(ruleIdx, { ...rule, conditions });
   };
 
   const parsedMapping = useMemo(() => {
@@ -134,27 +257,27 @@ export const ActionPathRegistryForm: React.FC<{
       .map((k) => ({ value: k, label: k }));
   }, [parsedMapping.obj]);
 
-  const parsedConditions = useMemo(() => {
-    const raw = conditionsJsonValue ?? "[]";
+  const parsedAutoTagRules = useMemo(() => {
+    const raw = autoTagRulesJsonValue ?? "[]";
     try {
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) {
         return {
-          arr: null as ConditionRuleFormValue[] | null,
-          error: "Conditions must be a JSON array",
+          arr: null as AutoTagRuleFormValue[] | null,
+          error: "AutoTagRules must be a JSON array",
         };
       }
       return {
-        arr: parsed as ConditionRuleFormValue[],
+        arr: parsed as AutoTagRuleFormValue[],
         error: null as string | null,
       };
     } catch {
       return {
-        arr: null as ConditionRuleFormValue[] | null,
+        arr: null as AutoTagRuleFormValue[] | null,
         error: "Invalid JSON",
       };
     }
-  }, [conditionsJsonValue]);
+  }, [autoTagRulesJsonValue]);
 
   const checkedKeys = useMemo(() => {
     if (!parsedMapping.obj) return new Set<string>();
@@ -199,6 +322,92 @@ export const ActionPathRegistryForm: React.FC<{
       return;
     }
 
+    const groupPath = String(values.groupPath ?? "").trim() || "common";
+    const filter = String(values.filter ?? "").trim();
+
+    const groupPathOk = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/i.test(groupPath);
+    if (!groupPathOk) {
+      message.error(
+        "Invalid group path format. Expected dot-separated keys (e.g. plant.growth)",
+      );
+      return;
+    }
+
+    const filterOk = /^[a-z0-9_]+$/i.test(filter);
+    if (!filterOk) {
+      message.error(
+        "Invalid filter format. Expected a single key (e.g. transplant)",
+      );
+      return;
+    }
+
+    const actionPath = `${groupPath}.${filter}`;
+
+    if (values.autoTagRulesJson) {
+      try {
+        const parsed = JSON.parse(values.autoTagRulesJson);
+        if (!Array.isArray(parsed)) {
+          message.error("AutoTagRules JSON must be an array");
+          return;
+        }
+
+        for (const [idx, rule] of parsed.entries()) {
+          const r = rule as AutoTagRuleFormValue;
+          if (!r.name || String(r.name).trim() === "") {
+            message.error(`Rule #${idx + 1}: name is required`);
+            return;
+          }
+          if (!r.tag_id || String(r.tag_id).trim() === "") {
+            message.error(`Rule #${idx + 1}: tag is required`);
+            return;
+          }
+          const hasLogic = r.logic === "AND" || r.logic === "OR";
+          const minConditions = hasLogic ? 2 : 1;
+          if (
+            r.logic !== undefined &&
+            r.logic !== null &&
+            r.logic !== "AND" &&
+            r.logic !== "OR"
+          ) {
+            message.error(`Rule #${idx + 1}: logic must be AND/OR or empty`);
+            return;
+          }
+          if (
+            !Array.isArray(r.conditions) ||
+            r.conditions.length < minConditions
+          ) {
+            message.error(
+              `Rule #${idx + 1}: conditions must have at least ${minConditions} items`,
+            );
+            return;
+          }
+          for (const [cIdx, c] of r.conditions.entries()) {
+            if (!c.field || String(c.field).trim() === "") {
+              message.error(
+                `Rule #${idx + 1} / Condition #${cIdx + 1}: field is required`,
+              );
+              return;
+            }
+            if (!c.operator) {
+              message.error(
+                `Rule #${idx + 1} / Condition #${cIdx + 1}: operator is required`,
+              );
+              return;
+            }
+            if (c.value === undefined || String(c.value).trim() === "") {
+              message.error(
+                `Rule #${idx + 1} / Condition #${cIdx + 1}: value is required`,
+              );
+              return;
+            }
+          }
+        }
+      } catch {
+        message.error("Invalid autoTagRules JSON");
+        return;
+      }
+    }
+
     if (values.conditionsJson) {
       try {
         const parsed = JSON.parse(values.conditionsJson);
@@ -239,19 +448,17 @@ export const ActionPathRegistryForm: React.FC<{
       }
     }
 
-    const actionPathOk = /^[a-z]+\.[a-z]+\.[a-z0-9_]+$/i.test(
-      values.actionPath,
-    );
-    if (!actionPathOk) {
-      message.error(
-        "Invalid actionPath format. Expected scope.category.action (e.g. plant.growth.transplant)",
-      );
-      return;
-    }
-
     setSaving(true);
     try {
-      const ok = await actionPathRegistryService.upsert(values);
+      const ok = await actionPathRegistryService.upsert({
+        actionPath,
+        description: values.description,
+        targetType: values.targetType,
+        mappingJson: values.mappingJson,
+        conditionsJson: values.conditionsJson,
+        autoTagRulesJson: values.autoTagRulesJson,
+        tagId: values.tagId,
+      });
       if (ok) {
         message.success("Registry saved");
         onSaved?.();
@@ -336,12 +543,6 @@ export const ActionPathRegistryForm: React.FC<{
     ];
   }, [commonTags, entityTags, targetTypeValue]);
 
-  const allTagItems = useMemo(() => {
-    const map = new Map<string, TagListItem>();
-    for (const t of [...entityTags, ...commonTags]) map.set(t.id, t);
-    return map;
-  }, [commonTags, entityTags]);
-
   return (
     <Card>
       <Space
@@ -362,24 +563,131 @@ export const ActionPathRegistryForm: React.FC<{
         onFinish={onSubmit}
         initialValues={{
           actionPath: "plant.growth.transplant",
+          groupPath: "plant.growth",
+          filter: "transplant",
+          description: "",
           targetType: "Plant",
           mappingJson: defaultMapping,
           conditionsJson: "[]",
+          autoTagRulesJson: "[]",
           ...initialValues,
         }}
       >
+        <Form.Item name="actionPath" hidden>
+          <Input />
+        </Form.Item>
+
         <Form.Item
-          name="actionPath"
-          label="Action path"
+          name="groupPath"
+          label="Group"
           extra={
             <Text type="secondary">
-              Example: <Text code>plant.growth.transplant</Text> (format:{" "}
-              <Text code>scope.category.action</Text>)
+              Example: <Text code>plant.growth</Text> (this will prefix your
+              action path)
             </Text>
           }
-          rules={[{ required: true, message: "Action path is required" }]}
+          rules={[{ required: true, message: "Group is required" }]}
         >
-          <Input placeholder="scope.category.action (e.g. plant.growth.transplant)" />
+          <Select
+            showSearch
+            loading={groupsLoading}
+            placeholder="Select a group..."
+            options={groups.map((g) => ({
+              value: g.path,
+              label: (
+                <Space size={8}>
+                  <Text code>{g.path}</Text>
+                  {g.description ? (
+                    <Text type="secondary">{g.description}</Text>
+                  ) : null}
+                </Space>
+              ),
+            }))}
+            filterOption={(inputValue, option) =>
+              String((option as any)?.value ?? "")
+                .toLowerCase()
+                .includes(inputValue.toLowerCase())
+            }
+            style={{ width: 420 }}
+          />
+        </Form.Item>
+
+        <Space style={{ marginBottom: 16 }}>
+          <Button
+            onClick={() => {
+              setCreatingGroup((v) => !v);
+              if (!creatingGroup) {
+                setNewGroupPath("");
+                setNewGroupDescription("");
+              }
+            }}
+          >
+            {creatingGroup ? "Cancel new group" : "Create new group"}
+          </Button>
+        </Space>
+
+        {creatingGroup ? (
+          <Card size="small" style={{ marginBottom: 16 }}>
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Input
+                value={newGroupPath}
+                onChange={(e) => setNewGroupPath(e.target.value)}
+                placeholder="Group path (e.g. plant.growth)"
+              />
+              <Input
+                value={newGroupDescription}
+                onChange={(e) => setNewGroupDescription(e.target.value)}
+                placeholder="Group description (optional)"
+              />
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={async () => {
+                    try {
+                      const created =
+                        await actionPathRegistryService.createGroup({
+                          path: newGroupPath,
+                          description: newGroupDescription,
+                        });
+                      message.success("Group created");
+                      setGroups((prev) => {
+                        const next = [...prev, created];
+                        next.sort((a, b) => a.path.localeCompare(b.path));
+                        return next;
+                      });
+                      form.setFieldValue("groupPath", created.path);
+                      setCreatingGroup(false);
+                    } catch (e: any) {
+                      message.error(e?.message ?? "Failed to create group");
+                    }
+                  }}
+                  disabled={!String(newGroupPath).trim()}
+                >
+                  Save group
+                </Button>
+              </Space>
+            </Space>
+          </Card>
+        ) : null}
+
+        <Form.Item
+          name="filter"
+          label="Filter"
+          extra={
+            <Text type="secondary">
+              Example: <Text code>transplant</Text>
+            </Text>
+          }
+          rules={[{ required: true, message: "Filter is required" }]}
+        >
+          <Input
+            placeholder="Event name (last segment)"
+            style={{ width: 420 }}
+          />
+        </Form.Item>
+
+        <Form.Item name="description" label="Description (optional)">
+          <Input.TextArea rows={2} />
         </Form.Item>
 
         <Form.Item
@@ -434,193 +742,271 @@ export const ActionPathRegistryForm: React.FC<{
 
         <Card size="small" style={{ marginBottom: 12 }}>
           <Space style={{ width: "100%", justifyContent: "space-between" }}>
-            <Text strong>Condition Builder</Text>
-            <Button
-              size="small"
-              onClick={() => form.setFieldValue("conditionsJson", "[]")}
-            >
-              Clear rules
+            <Text strong>Auto Tag Rules</Text>
+            <Button size="small" onClick={addAutoTagRule}>
+              Add rule
             </Button>
           </Space>
 
           <div style={{ marginTop: 8 }}>
             <Form.Item
-              name="conditionsJson"
-              label="Conditions JSON (advanced)"
+              name="autoTagRulesJson"
+              label="AutoTagRules JSON (advanced)"
               style={{ marginBottom: 8 }}
             >
               <Input.TextArea rows={4} />
             </Form.Item>
 
-            {parsedConditions.error ? (
+            {parsedAutoTagRules.error ? (
               <div style={{ marginTop: 8 }}>
-                <Text type="danger">{parsedConditions.error}</Text>
+                <Text type="danger">{parsedAutoTagRules.error}</Text>
               </div>
             ) : null}
 
-            <Form.Item shouldUpdate noStyle>
-              {() => {
-                const rules: ConditionRuleFormValue[] = (() => {
-                  if (!parsedConditions.arr) return [];
-                  return parsedConditions.arr;
-                })();
-
-                const setRules = (nextRules: ConditionRuleFormValue[]) => {
-                  form.setFieldValue(
-                    "conditionsJson",
-                    JSON.stringify(nextRules, null, 2),
-                  );
-                };
-
-                const updateRule = (
-                  idx: number,
-                  patch: Partial<ConditionRuleFormValue>,
-                ) => {
-                  const next = rules.map((r, i) =>
-                    i === idx ? { ...r, ...patch } : r,
-                  );
-                  setRules(next);
-                };
-
-                const removeRule = (idx: number) => {
-                  const next = rules.filter((_r, i) => i !== idx);
-                  setRules(next);
-                };
-
-                const addRule = () => {
-                  setRules([
-                    ...rules,
-                    {
-                      field: undefined,
-                      operator: undefined,
-                      value: undefined,
-                      tagId: undefined,
-                    },
-                  ]);
-                };
-
-                return (
-                  <div>
-                    {rules.length === 0 ? (
-                      <Text type="secondary">No rules yet</Text>
-                    ) : null}
-
-                    <div style={{ marginTop: 8 }}>
+            {parsedAutoTagRules.arr?.length ? (
+              <Space direction="vertical" style={{ width: "100%" }}>
+                {parsedAutoTagRules.arr.map((rule, ruleIdx) => (
+                  <Card
+                    key={ruleIdx}
+                    size="small"
+                    style={{ background: "#fafafa" }}
+                    bodyStyle={{ padding: 12 }}
+                  >
+                    <Space
+                      align="start"
+                      style={{
+                        width: "100%",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <Space direction="vertical" style={{ width: "100%" }}>
-                        {rules.map((rule, idx) => {
-                          const selectedTag = rule.tagId
-                            ? allTagItems.get(rule.tagId)
-                            : undefined;
+                        <Space wrap>
+                          <Input
+                            placeholder="Rule name"
+                            style={{ width: 220 }}
+                            value={rule.name}
+                            onChange={(e) =>
+                              updateAutoTagRule(ruleIdx, {
+                                ...rule,
+                                name: e.target.value,
+                              })
+                            }
+                          />
 
-                          return (
-                            <Card
-                              key={idx}
-                              size="small"
-                              style={{ background: "#fafafa" }}
-                              bodyStyle={{ padding: 12 }}
-                            >
-                              <Space
-                                align="start"
-                                style={{
-                                  width: "100%",
-                                  justifyContent: "space-between",
+                          <Select
+                            showSearch
+                            placeholder="Tag"
+                            style={{ width: 260 }}
+                            value={rule.tag_id}
+                            loading={tagsLoading}
+                            options={tagSelectOptions as any}
+                            onDropdownVisibleChange={(open) => {
+                              if (
+                                open &&
+                                !tagsLoading &&
+                                entityTags.length === 0 &&
+                                commonTags.length === 0
+                              ) {
+                                void loadTags();
+                              }
+                            }}
+                            onChange={(v) =>
+                              updateAutoTagRule(ruleIdx, { ...rule, tag_id: v })
+                            }
+                            filterOption={(inputValue, option) =>
+                              String((option as any)?.searchLabel ?? "")
+                                .toLowerCase()
+                                .includes(inputValue.toLowerCase())
+                            }
+                          />
+
+                          <Select
+                            allowClear
+                            placeholder="Logic"
+                            style={{ width: 120 }}
+                            value={rule.logic ?? null}
+                            options={[
+                              { value: "AND", label: "AND" },
+                              { value: "OR", label: "OR" },
+                            ]}
+                            onChange={(v) =>
+                              updateAutoTagRule(ruleIdx, {
+                                ...rule,
+                                logic: v ?? null,
+                              })
+                            }
+                          />
+                        </Space>
+
+                        <Space
+                          style={{
+                            width: "100%",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Text type="secondary">
+                            Conditions (min{" "}
+                            {rule.logic === "AND" || rule.logic === "OR"
+                              ? 2
+                              : 1}
+                            )
+                          </Text>
+                          <Button
+                            size="small"
+                            onClick={() => addCondition(ruleIdx)}
+                          >
+                            Add condition
+                          </Button>
+                        </Space>
+
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                          {(rule.conditions ?? []).map((c, condIdx) => (
+                            <Space key={condIdx} wrap>
+                              <Select
+                                showSearch
+                                allowClear
+                                placeholder="field"
+                                style={{ width: 180 }}
+                                className="condition-field-input"
+                                value={c.field}
+                                options={mappingKeyOptions}
+                                filterOption={(inputValue, option) =>
+                                  String((option as any)?.value ?? "")
+                                    .toLowerCase()
+                                    .includes(inputValue.toLowerCase())
+                                }
+                                onSearch={(search) => {
+                                  const conditions = [
+                                    ...(rule.conditions ?? []),
+                                  ];
+                                  conditions[condIdx] = {
+                                    ...conditions[condIdx],
+                                    field: search,
+                                  };
+                                  updateAutoTagRule(ruleIdx, {
+                                    ...rule,
+                                    conditions,
+                                  });
                                 }}
-                              >
-                                <Space wrap>
-                                  <Select
-                                    placeholder="Field"
-                                    style={{ width: 180 }}
-                                    value={rule.field}
-                                    options={mappingKeyOptions}
-                                    onChange={(v) =>
-                                      updateRule(idx, { field: v })
-                                    }
-                                  />
+                                onChange={(v) => {
+                                  const conditions = [
+                                    ...(rule.conditions ?? []),
+                                  ];
+                                  conditions[condIdx] = {
+                                    ...conditions[condIdx],
+                                    field: v ?? "",
+                                  };
+                                  updateAutoTagRule(ruleIdx, {
+                                    ...rule,
+                                    conditions,
+                                  });
+                                }}
+                              />
 
-                                  <Select
-                                    placeholder="Operator"
-                                    style={{ width: 120 }}
-                                    value={rule.operator}
-                                    options={[
-                                      { value: "lt", label: "lt (<)" },
-                                      { value: "gt", label: "gt (>)" },
-                                      { value: "eq", label: "eq (=)" },
-                                      { value: "lte", label: "lte (<=)" },
-                                      { value: "gte", label: "gte (>=)" },
-                                    ]}
-                                    onChange={(v) =>
-                                      updateRule(idx, { operator: v })
-                                    }
-                                  />
+                              <Select
+                                placeholder="op"
+                                style={{ width: 110 }}
+                                value={c.operator}
+                                options={[
+                                  { value: "lt", label: "lt" },
+                                  { value: "gt", label: "gt" },
+                                  { value: "eq", label: "eq" },
+                                  { value: "lte", label: "lte" },
+                                  { value: "gte", label: "gte" },
+                                ]}
+                                onChange={(v) => {
+                                  const conditions = [
+                                    ...(rule.conditions ?? []),
+                                  ];
+                                  conditions[condIdx] = {
+                                    ...conditions[condIdx],
+                                    operator: v,
+                                  };
+                                  updateAutoTagRule(ruleIdx, {
+                                    ...rule,
+                                    conditions,
+                                  });
+                                }}
+                              />
 
-                                  <Input
-                                    placeholder="Value"
-                                    style={{ width: 180 }}
-                                    value={rule.value}
-                                    onChange={(e) =>
-                                      updateRule(idx, { value: e.target.value })
-                                    }
-                                  />
+                              <InputNumber
+                                placeholder="number"
+                                style={{ width: 140 }}
+                                value={
+                                  typeof c.value === "number"
+                                    ? c.value
+                                    : undefined
+                                }
+                                onChange={(v) => {
+                                  const conditions = [
+                                    ...(rule.conditions ?? []),
+                                  ];
+                                  conditions[condIdx] = {
+                                    ...conditions[condIdx],
+                                    value: v === null ? "" : v,
+                                  };
+                                  updateAutoTagRule(ruleIdx, {
+                                    ...rule,
+                                    conditions,
+                                  });
+                                }}
+                              />
 
-                                  <Select
-                                    showSearch
-                                    placeholder="Tag"
-                                    style={{ width: 260 }}
-                                    value={rule.tagId}
-                                    loading={tagsLoading}
-                                    options={tagSelectOptions}
-                                    onDropdownVisibleChange={(open) => {
-                                      if (
-                                        open &&
-                                        !tagsLoading &&
-                                        entityTags.length === 0 &&
-                                        commonTags.length === 0
-                                      ) {
-                                        void loadTags();
-                                      }
-                                    }}
-                                    onChange={(v) =>
-                                      updateRule(idx, { tagId: v })
-                                    }
-                                    filterOption={(inputValue, option) =>
-                                      String((option as any)?.searchLabel ?? "")
-                                        .toLowerCase()
-                                        .includes(inputValue.toLowerCase())
-                                    }
-                                  />
-                                </Space>
+                              <Input
+                                placeholder="string"
+                                style={{ width: 180 }}
+                                value={
+                                  typeof c.value === "string" ? c.value : ""
+                                }
+                                onChange={(e) => {
+                                  const conditions = [
+                                    ...(rule.conditions ?? []),
+                                  ];
+                                  conditions[condIdx] = {
+                                    ...conditions[condIdx],
+                                    value: e.target.value,
+                                  };
+                                  updateAutoTagRule(ruleIdx, {
+                                    ...rule,
+                                    conditions,
+                                  });
+                                }}
+                              />
 
-                                <Space direction="vertical" align="end">
-                                  <Button
-                                    size="small"
-                                    type="text"
-                                    danger
-                                    icon={<CloseOutlined />}
-                                    onClick={() => removeRule(idx)}
-                                  />
-                                  {selectedTag ? (
-                                    <Tag color={selectedTag.color ?? "default"}>
-                                      {selectedTag.icon
-                                        ? `${selectedTag.icon} `
-                                        : ""}
-                                      {selectedTag.label}
-                                    </Tag>
-                                  ) : null}
-                                </Space>
-                              </Space>
-                            </Card>
-                          );
-                        })}
+                              <Button
+                                size="small"
+                                type="text"
+                                danger
+                                icon={<CloseOutlined />}
+                                onClick={() =>
+                                  removeCondition(ruleIdx, condIdx)
+                                }
+                                disabled={
+                                  (rule.conditions ?? []).length <=
+                                  (rule.logic === "AND" || rule.logic === "OR"
+                                    ? 2
+                                    : 1)
+                                }
+                              />
+                            </Space>
+                          ))}
+                        </Space>
                       </Space>
-                    </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      <Button onClick={addRule}>Add rule</Button>
-                    </div>
-                  </div>
-                );
-              }}
-            </Form.Item>
+                      <Button
+                        danger
+                        size="small"
+                        onClick={() => removeAutoTagRule(ruleIdx)}
+                      >
+                        Remove rule
+                      </Button>
+                    </Space>
+                  </Card>
+                ))}
+              </Space>
+            ) : (
+              <Text type="secondary">No auto tag rules yet</Text>
+            )}
           </div>
         </Card>
 

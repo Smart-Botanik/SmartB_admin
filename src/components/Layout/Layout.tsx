@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   Layout as AntLayout,
   Menu,
@@ -31,8 +31,28 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  const openedSeparatelyRef = useRef(false);
+
   const getMenuHref = (path: string) => {
     return new URL(path, window.location.origin).toString();
+  };
+
+  const openInNewTab = (path: string) => {
+    window.open(getMenuHref(path), "_blank", "noopener,noreferrer");
+  };
+
+  const handleOpenSeparatelyMouseDown = (
+    event: React.MouseEvent<HTMLElement>,
+    action: () => void,
+  ) => {
+    if (event.button !== 1) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    openedSeparatelyRef.current = true;
+    action();
   };
 
   const handleLogout = async () => {
@@ -52,126 +72,136 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       key: "/",
       icon: <DashboardOutlined />,
       label: (
-        <a href={getMenuHref("/")} target="_blank" rel="noopener noreferrer">
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () => openInNewTab("/"))
+          }
+        >
           Dashboard
-        </a>
+        </span>
       ),
     },
     {
       key: "/users",
       icon: <UserOutlined />,
       label: (
-        <a
-          href={getMenuHref("/users")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () => openInNewTab("/users"))
+          }
         >
           Users
-        </a>
+        </span>
       ),
     },
     {
       key: "/plants",
       icon: <FileTextOutlined />,
       label: (
-        <a
-          href={getMenuHref("/plants")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () => openInNewTab("/plants"))
+          }
         >
           Plants
-        </a>
+        </span>
       ),
     },
     {
       key: "/diaries",
       icon: <FileTextOutlined />,
       label: (
-        <a
-          href={getMenuHref("/diaries")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () => openInNewTab("/diaries"))
+          }
         >
           Diaries
-        </a>
+        </span>
       ),
     },
     {
       key: "/brands",
       icon: <TagsOutlined />,
       label: (
-        <a
-          href={getMenuHref("/brands")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () => openInNewTab("/brands"))
+          }
         >
           Brands
-        </a>
+        </span>
       ),
     },
     {
       key: "/products",
       icon: <ShoppingOutlined />,
       label: (
-        <a
-          href={getMenuHref("/products")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () =>
+              openInNewTab("/products"),
+            )
+          }
         >
           Products
-        </a>
+        </span>
       ),
     },
     {
       key: "/media",
       icon: <PictureOutlined />,
       label: (
-        <a
-          href={getMenuHref("/media")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () => openInNewTab("/media"))
+          }
         >
           Media
-        </a>
+        </span>
       ),
     },
     {
       key: "/events",
       icon: <ThunderboltOutlined />,
       label: (
-        <a
-          href={getMenuHref("/events")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () => openInNewTab("/events"))
+          }
         >
           Events
-        </a>
+        </span>
       ),
     },
     {
       key: "/registry-tags",
       icon: <TagsOutlined />,
       label: (
-        <a
-          href={getMenuHref("/registry-tags")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () =>
+              openInNewTab("/registry-tags"),
+            )
+          }
         >
           Registry Tags
-        </a>
+        </span>
       ),
     },
     {
       key: "/registry",
       icon: <SettingOutlined />,
       label: (
-        <a
-          href={getMenuHref("/registry")}
-          target="_blank"
-          rel="noopener noreferrer"
+        <span
+          onMouseDown={(event) =>
+            handleOpenSeparatelyMouseDown(event, () =>
+              openInNewTab("/registry"),
+            )
+          }
         >
           Action Path Registry
-        </a>
+        </span>
       ),
     },
   ];
@@ -232,6 +262,13 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
+          onClick={({ key }) => {
+            if (openedSeparatelyRef.current) {
+              openedSeparatelyRef.current = false;
+              return;
+            }
+            navigate(String(key));
+          }}
         />
       </Sider>
       <AntLayout>

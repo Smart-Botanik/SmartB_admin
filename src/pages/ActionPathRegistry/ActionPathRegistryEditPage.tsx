@@ -8,6 +8,7 @@ const { Title } = Typography;
 type LocationState = {
   item?: {
     actionPath: string;
+    description?: string | null;
     targetType: string;
     mapping: Record<string, unknown>;
     conditions?: Array<{
@@ -32,6 +33,7 @@ const ActionPathRegistryEditPage: React.FC = () => {
 
     return {
       actionPath: item.actionPath,
+      description: item.description ?? "",
       targetType: item.targetType,
       mappingJson: JSON.stringify(item.mapping ?? {}, null, 2),
       conditionsJson: JSON.stringify(item.conditions ?? [], null, 2),
