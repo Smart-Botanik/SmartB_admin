@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
-  Divider,
   Empty,
   Form,
   Input,
@@ -10,7 +9,6 @@ import {
   Select,
   Space,
   Table,
-  Tag,
   Typography,
   message,
 } from "antd";
@@ -18,6 +16,8 @@ import {
   CloseOutlined,
   EditOutlined,
   SaveOutlined,
+  CaretDownOutlined,
+  CaretRightOutlined,
   CompressOutlined,
   ExpandOutlined,
   FolderAddOutlined,
@@ -26,14 +26,16 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
-import { useNavigate } from "react-router-dom";
 import { actionPathRegistryService } from "@/services/actionPathRegistry";
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
+  closestCenter,
   DndContext,
   PointerSensor,
+  type CollisionDetection,
   useSensor,
   useSensors,
+  useDroppable,
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
@@ -44,7 +46,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const DragHandle: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   return (
@@ -58,7 +60,7 @@ const DragHandle: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   );
 };
 
-const SortableRow: React.FC<
+const SortableGroupRow: React.FC<
   React.HTMLAttributes<HTMLTableRowElement> & { "data-row-key": string }
 > = (props) => {
   const {
@@ -68,7 +70,10 @@ const SortableRow: React.FC<
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props["data-row-key"] });
+  } = useSortable({
+    id: props["data-row-key"],
+    data: { type: "group" },
+  });
 
   const style: React.CSSProperties = {
     ...props.style,
@@ -88,6 +93,70 @@ const SortableRow: React.FC<
   );
 };
 
+const makeSortableItemRow = (containerKey: string) => {
+  const SortableItemRow: React.FC<
+    React.HTMLAttributes<HTMLTableRowElement> & { "data-row-key": string }
+  > = (props) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: props["data-row-key"],
+      data: { type: "item", containerKey },
+    });
+
+    const style: React.CSSProperties = {
+      ...props.style,
+      transform: CSS.Transform.toString(transform),
+      transition,
+      ...(isDragging ? { position: "relative", zIndex: 9999 } : null),
+    };
+
+    return (
+      <tr
+        {...props}
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+      />
+    );
+  };
+
+  return SortableItemRow;
+};
+
+const DroppableContainer: React.FC<{
+  id: string;
+  children: React.ReactNode;
+}> = (props) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: props.id,
+    data: { type: "container", containerKey: props.id },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={
+        isOver
+          ? {
+              outline: "2px dashed #1677ff",
+              borderRadius: 8,
+              padding: 8,
+            }
+          : { padding: 8 }
+      }
+    >
+      {props.children}
+    </div>
+  );
+};
+
 function getFilterFromActionPath(actionPath: string): string {
   const parts = String(actionPath ?? "")
     .split(".")
@@ -96,12 +165,19 @@ function getFilterFromActionPath(actionPath: string): string {
 }
 
 const ActionPathRegistryPage: React.FC = () => {
-  const navigate = useNavigate();
-
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
   const [createGroupLoading, setCreateGroupLoading] = useState(false);
   const [createGroupForm] = Form.useForm<{
     path: string;
+    description?: string;
+  }>();
+
+  const [createRegistryModalOpen, setCreateRegistryModalOpen] = useState(false);
+  const [createRegistryLoading, setCreateRegistryLoading] = useState(false);
+  const [createRegistryForm] = Form.useForm<{
+    actionPath: string;
+    targetType: string;
+    mappingJson: string;
     description?: string;
   }>();
 
@@ -155,9 +231,7 @@ const ActionPathRegistryPage: React.FC = () => {
   >([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [targetTypeFilter, setTargetTypeFilter] = useState<string | undefined>(
-    undefined,
-  );
+  const [targetTypeFilter] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -165,6 +239,31 @@ const ActionPathRegistryPage: React.FC = () => {
   const [savingOrder, setSavingOrder] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor));
+
+  const collisionDetection: CollisionDetection = (args) => {
+    const activeType = (args.active.data.current as any)?.type;
+
+    if (activeType === "group") {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(
+          (c) => (c.data.current as any)?.type === "group",
+        ),
+      });
+    }
+
+    if (activeType === "item") {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter((c) => {
+          const t = (c.data.current as any)?.type;
+          return t === "item" || t === "container";
+        }),
+      });
+    }
+
+    return closestCenter(args);
+  };
 
   type DraftGroup = {
     key: string;
@@ -186,6 +285,7 @@ const ActionPathRegistryPage: React.FC = () => {
     kind: "item";
     id: string;
     groupId?: string | null;
+    position: number;
     actionPath: string;
     filter: string;
     description?: string | null;
@@ -244,6 +344,7 @@ const ActionPathRegistryPage: React.FC = () => {
         kind: "item",
         id: it.id,
         groupId: it.groupId ?? null,
+        position: it.position,
         actionPath: it.actionPath,
         filter,
         description: it.description,
@@ -268,7 +369,10 @@ const ActionPathRegistryPage: React.FC = () => {
     const groupRows: DraftGroup[] = groups
       .map((g): DraftGroup => {
         const children = (byGroupId.get(g.id) ?? []).slice();
-        children.sort((a, b) => a.filter.localeCompare(b.filter));
+        children.sort((a, b) => {
+          if (a.position !== b.position) return a.position - b.position;
+          return a.filter.localeCompare(b.filter);
+        });
         return {
           key: `group:${g.id}`,
           kind: "group" as const,
@@ -294,7 +398,10 @@ const ActionPathRegistryPage: React.FC = () => {
     const unknownGroups: DraftGroup[] = unknownGroupIds
       .map((id): DraftGroup => {
         const children = (byGroupId.get(id) ?? []).slice();
-        children.sort((a, b) => a.filter.localeCompare(b.filter));
+        children.sort((a, b) => {
+          if (a.position !== b.position) return a.position - b.position;
+          return a.filter.localeCompare(b.filter);
+        });
         return {
           key: `group:${id}`,
           kind: "group" as const,
@@ -309,7 +416,10 @@ const ActionPathRegistryPage: React.FC = () => {
     const ungroupedRow: DraftUngrouped = {
       key: "ungrouped",
       kind: "ungrouped" as const,
-      children: ungrouped.sort((a, b) => a.filter.localeCompare(b.filter)),
+      children: ungrouped.sort((a, b) => {
+        if (a.position !== b.position) return a.position - b.position;
+        return a.filter.localeCompare(b.filter);
+      }),
     };
 
     return [...groupRows, ...unknownGroups, ungroupedRow];
@@ -368,6 +478,15 @@ const ActionPathRegistryPage: React.FC = () => {
     setEditGroupId(null);
   };
 
+  const openCreateRegistryModal = () => {
+    createRegistryForm.resetFields();
+    setCreateRegistryModalOpen(true);
+  };
+
+  const closeCreateRegistryModal = () => {
+    setCreateRegistryModalOpen(false);
+  };
+
   const submitEditGroup = async () => {
     if (!editGroupId) return;
     try {
@@ -408,9 +527,34 @@ const ActionPathRegistryPage: React.FC = () => {
     }
   };
 
+  const submitCreateRegistry = async () => {
+    try {
+      const values = await createRegistryForm.validateFields();
+      setCreateRegistryLoading(true);
+      await actionPathRegistryService.upsert({
+        actionPath: values.actionPath,
+        targetType: values.targetType,
+        mappingJson: values.mappingJson,
+        description: values.description,
+      });
+      message.success("Registry saved");
+      closeCreateRegistryModal();
+      await load();
+    } catch (e: any) {
+      if (e?.errorFields) return;
+      message.error(e?.message ?? "Failed to save registry");
+    } finally {
+      setCreateRegistryLoading(false);
+    }
+  };
+
   const onDragEndGroups = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+
+    const activeType = (active.data.current as any)?.type;
+    const overType = (over.data.current as any)?.type;
+    if (activeType !== "group" || overType !== "group") return;
 
     setDraftGroups((prev) => {
       if (!prev) return prev;
@@ -430,28 +574,66 @@ const ActionPathRegistryPage: React.FC = () => {
     });
   };
 
-  const onDragEndItems = (parentKey: string) => (event: DragEndEvent) => {
+  const onDragEndItems = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+
+    const activeType = (active.data.current as any)?.type;
+    if (activeType !== "item") return;
+
+    const sourceContainerKey = String(
+      (active.data.current as any)?.containerKey ?? "",
+    );
+    if (!sourceContainerKey) return;
+
+    const overType = (over.data.current as any)?.type;
+    if (overType !== "item" && overType !== "container") return;
+
+    const destinationContainerKey = String(
+      (over.data.current as any)?.containerKey ?? "",
+    );
+    if (!destinationContainerKey) return;
+
+    if (destinationContainerKey !== sourceContainerKey) return;
 
     setDraftGroups((prev) => {
       if (!prev) return prev;
 
-      const next = prev.map((r) => {
+      const activeId = String(active.id);
+      const overId = String(over.id);
+
+      return prev.map((r) => {
         if (r.kind !== "group" && r.kind !== "ungrouped") return r;
-        if (r.key !== parentKey) return r;
+        if (r.key !== sourceContainerKey) return r;
 
-        const activeId = String(active.id);
-        const overId = String(over.id);
-        const oldIndex = r.children.findIndex((c) => c.id === activeId);
-        const newIndex = r.children.findIndex((c) => c.id === overId);
-        if (oldIndex < 0 || newIndex < 0) return r;
+        const fromIdx = r.children.findIndex((c) => c.id === activeId);
+        if (fromIdx < 0) return r;
 
-        return { ...r, children: arrayMove(r.children, oldIndex, newIndex) };
+        if (overType === "container") {
+          // Dropped on container (empty space) -> move to end.
+          const next = r.children.slice();
+          const [picked] = next.splice(fromIdx, 1);
+          next.push(picked);
+          return { ...r, children: next };
+        }
+
+        const toIdx = r.children.findIndex((c) => c.id === overId);
+        if (toIdx < 0) return r;
+
+        return { ...r, children: arrayMove(r.children, fromIdx, toIdx) };
       });
-
-      return next;
     });
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const activeType = (event.active.data.current as any)?.type;
+    if (activeType === "group") {
+      onDragEndGroups(event);
+      return;
+    }
+    if (activeType === "item") {
+      onDragEndItems(event);
+    }
   };
 
   const setItemGroup = (itemId: string, nextGroupIdRaw: string) => {
@@ -465,72 +647,62 @@ const ActionPathRegistryPage: React.FC = () => {
         if (r.kind !== "group" && r.kind !== "ungrouped") return r;
         const children = r.children.filter((c) => {
           if (c.id !== itemId) return true;
-          picked = { ...c, groupId: nextGroupId };
+          picked = c;
           return false;
         });
         return { ...r, children };
       });
 
-      if (!picked) return prev;
+      const pickedItem = picked;
+      if (!pickedItem) return prev;
 
-      // insert to target group
-      const inserted = cleaned.map((r) => {
-        if (nextGroupId) {
-          if (r.kind !== "group") return r;
-          if (r.groupId !== nextGroupId) return r;
-          return { ...r, children: [...r.children, picked!] };
-        }
-        if (r.kind !== "ungrouped") return r;
-        return { ...r, children: [...r.children, picked!] };
+      const pickedNext: DraftItem = {
+        ...(pickedItem as DraftItem),
+        groupId: nextGroupId,
+      };
+      const destinationKey = nextGroupId ? `group:${nextGroupId}` : "ungrouped";
+
+      return cleaned.map((r) => {
+        if (r.kind !== "group" && r.kind !== "ungrouped") return r;
+        if (r.key !== destinationKey) return r;
+        return { ...r, children: [...r.children, pickedNext] };
       });
-
-      return inserted;
     });
   };
 
   const saveOrder = async () => {
     if (!draftGroups) return;
 
-    setSavingOrder(true);
     try {
-      const groupInput: Array<{ id: string; order: number }> = [];
-      const input: Array<{
+      setSavingOrder(true);
+
+      const groupOrderInput = draftGroups
+        .filter((r): r is DraftGroup => r.kind === "group")
+        .map((g, idx) => ({ id: g.groupId, order: idx }));
+
+      const itemsOrderInput: Array<{
         id: string;
         groupId?: string | null;
         position: number;
       }> = [];
 
-      for (const r of draftGroups) {
-        if (r.kind !== "group" && r.kind !== "ungrouped") continue;
-        if (r.kind === "group") {
-          groupInput.push({ id: r.groupId, order: groupInput.length });
-        }
-        for (let i = 0; i < r.children.length; i += 1) {
-          const c = r.children[i];
-          input.push({
-            id: c.id,
-            groupId: r.kind === "group" ? r.groupId : null,
-            position: i,
-          });
-        }
+      for (const row of draftGroups) {
+        if (row.kind !== "group" && row.kind !== "ungrouped") continue;
+        const groupId = row.kind === "group" ? row.groupId : null;
+        row.children.forEach((c, idx) => {
+          itemsOrderInput.push({ id: c.id, groupId, position: idx });
+        });
       }
 
-      const groupsOk =
-        await actionPathRegistryService.updateGroupsOrder(groupInput);
-      if (!groupsOk) {
-        message.error("Failed to save group order");
-        return;
-      }
+      await Promise.all([
+        actionPathRegistryService.updateGroupsOrder(groupOrderInput),
+        actionPathRegistryService.updateOrder(itemsOrderInput),
+      ]);
 
-      const ok = await actionPathRegistryService.updateOrder(input);
-      if (ok) {
-        message.success("Order saved");
-        setEditMode(false);
-        setDraftGroups(null);
-        await load();
-      } else {
-        message.error("Failed to save order");
-      }
+      message.success("Order saved");
+      setEditMode(false);
+      setDraftGroups(null);
+      await load();
     } catch (e: any) {
       message.error(e?.message ?? "Failed to save order");
     } finally {
@@ -538,230 +710,147 @@ const ActionPathRegistryPage: React.FC = () => {
     }
   };
 
-  const columns: ColumnsType<DraftRow> = useMemo(
-    () => [
-      {
-        title: "",
-        key: "sort",
-        width: 36,
-        className: "drag-visible",
-        render: (_v, record) => {
-          if (!editMode) return null;
-          if (record.kind !== "group") return null;
-          return <DragHandle />;
-        },
-      },
-      {
-        title: "",
-        key: "expanderPlaceholder",
-        width: 28,
-        render: () => null,
-      },
-      {
-        title: "Group / Filter",
-        key: "groupOrFilter",
-        render: (_v, record) => {
-          if (record.kind === "group") {
-            return <Text code>{record.path}</Text>;
-          }
-          if (record.kind === "ungrouped") {
-            return <Text type="secondary">(no group)</Text>;
-          }
-          return <Text>{record.filter}</Text>;
-        },
-      },
-      {
-        title: "Description",
-        key: "description",
-        render: (_v, record) => {
-          if (record.kind === "group") {
-            return record.description ? (
-              <Text>{record.description}</Text>
-            ) : (
-              <Text type="secondary">-</Text>
-            );
-          }
-          if (record.kind === "ungrouped") {
-            return <Text type="secondary">-</Text>;
-          }
-          return record.description ? (
-            <Text>{record.description}</Text>
-          ) : (
-            <Text type="secondary">-</Text>
-          );
-        },
-      },
-      {
-        title: "Actions",
-        key: "actions",
-        width: 90,
-        render: (_v, record) => {
-          if (record.kind !== "group") {
-            return <Text type="secondary">-</Text>;
-          }
+  const itemColumns: ColumnsType<DraftItem> = [
+    {
+      title: "",
+      width: 32,
+      render: () => (editMode ? <DragHandle disabled={false} /> : null),
+    },
+    {
+      title: "Filter",
+      dataIndex: "filter",
+      key: "filter",
+    },
+    {
+      title: "Action Path",
+      dataIndex: "actionPath",
+      key: "actionPath",
+    },
+    {
+      title: "Group",
+      key: "group",
+      render: (_, record) => (
+        <span
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <Select
+            style={{ width: 220 }}
+            disabled={!editMode}
+            value={record.groupId ?? "__none__"}
+            options={groupOptions}
+            dropdownStyle={{ zIndex: 2000 }}
+            getPopupContainer={(trigger) =>
+              (trigger.parentElement as HTMLElement) ?? document.body
+            }
+            onChange={(v) => setItemGroup(record.id, String(v))}
+          />
+        </span>
+      ),
+    },
+  ];
 
-          return (
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              aria-label="Edit group"
-              disabled={editMode}
-              onClick={() =>
-                openEditGroupModal({
-                  id: record.groupId,
-                  path: record.path,
-                  description: record.description,
-                })
-              }
-            />
-          );
-        },
+  const columns: ColumnsType<DraftRow> = [
+    {
+      title: "",
+      width: 32,
+      render: (_, record) =>
+        editMode && record.kind === "group" ? (
+          <DragHandle disabled={false} />
+        ) : null,
+    },
+    {
+      title: "Path",
+      key: "path",
+      render: (_, record) => {
+        if (record.kind === "group") return record.path;
+        if (record.kind === "ungrouped") return "(no group)";
+        return null;
       },
-    ],
-    [editMode],
-  );
-
-  const itemColumns: ColumnsType<DraftItem> = useMemo(
-    () => [
-      {
-        title: "",
-        key: "sort",
-        width: 36,
-        render: () => (editMode ? <DragHandle /> : null),
+    },
+    {
+      title: "Description",
+      key: "description",
+      render: (_, record) =>
+        record.kind === "group" ? record.description : null,
+    },
+    {
+      title: "",
+      key: "actions",
+      width: 120,
+      render: (_, record) => {
+        if (record.kind !== "group") return null;
+        return (
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            aria-label="Edit"
+            onClick={() =>
+              openEditGroupModal({
+                id: record.groupId,
+                path: record.path,
+                description: record.description,
+              })
+            }
+          />
+        );
       },
-      {
-        title: "Filter",
-        key: "filter",
-        render: (_v, record) => <Text>{record.filter}</Text>,
-      },
-      {
-        title: "Description",
-        key: "description",
-        render: (_v, record) =>
-          record.description ? (
-            <Text>{record.description}</Text>
-          ) : (
-            <Text type="secondary">-</Text>
-          ),
-      },
-      {
-        title: "Target type",
-        key: "targetType",
-        width: 160,
-        render: (_v, record) => {
-          const color = record.targetType === "Plant" ? "green" : "default";
-          return <Tag color={color}>{record.targetType}</Tag>;
-        },
-      },
-      {
-        title: "Updated",
-        key: "updatedAt",
-        width: 180,
-        render: (_v, record) => new Date(record.updatedAt).toLocaleString(),
-      },
-      {
-        title: "",
-        key: "edit",
-        width: 64,
-        render: (_v, record) => {
-          return (
-            <Space>
-              {editMode ? (
-                <Select
-                  size="small"
-                  value={record.groupId ?? "__none__"}
-                  options={groupOptions}
-                  style={{ width: 160 }}
-                  onChange={(v) => setItemGroup(record.id, v)}
-                />
-              ) : null}
-              <Button
-                type="link"
-                icon={<EditOutlined />}
-                aria-label="Edit"
-                onClick={() =>
-                  navigate(
-                    `/registry/edit/${encodeURIComponent(record.actionPath)}`,
-                    {
-                      state: {
-                        item: {
-                          actionPath: record.actionPath,
-                          description: record.description ?? "",
-                          targetType: record.targetType,
-                          mapping: record.mapping,
-                          conditions: record.conditions ?? null,
-                          tagId: record.tagId ?? null,
-                        },
-                      },
-                    },
-                  )
-                }
-              />
-            </Space>
-          );
-        },
-      },
-    ],
-    [editMode, groupOptions, navigate],
-  );
+    },
+  ];
 
   return (
-    <div>
-      <Title level={2} style={{ margin: 0, marginBottom: 16 }}>
-        Action Path Registry - Total: {total}
+    <div style={{ padding: 24 }}>
+      <Title level={3} style={{ marginTop: 0 }}>
+        Action Path Registry
       </Title>
 
-      <Divider style={{ marginTop: 0, marginBottom: 16 }} />
-
-      <Space wrap style={{ width: "100%", marginBottom: 12 }}>
-        <Button
-          icon={<ReloadOutlined />}
-          onClick={() => load()}
-          loading={loading}
-        >
+      <Space style={{ marginBottom: 16 }}>
+        <Button icon={<ReloadOutlined />} onClick={load} disabled={loading}>
           Refresh
         </Button>
+
         <Button
-          type="primary"
-          onClick={openCreateGroupModal}
-          disabled={editMode || loading}
-          style={{ background: "#52c41a", borderColor: "#52c41a" }}
           icon={<FolderAddOutlined />}
+          onClick={openCreateGroupModal}
+          disabled={loading}
+          style={{
+            background: "#52c41a",
+            borderColor: "#52c41a",
+            color: "#fff",
+            boxShadow: "none",
+          }}
         >
           Add Group
         </Button>
+
         <Button
           type="primary"
-          onClick={() => navigate("/registry/new")}
           icon={<PlusOutlined />}
+          onClick={openCreateRegistryModal}
+          disabled={loading}
         >
-          Create Registry
+          Add Registry
         </Button>
-      </Space>
-
-      <Space wrap style={{ width: "100%", marginBottom: 16 }}>
-        <Select
-          value={targetTypeFilter}
-          onChange={(v) => {
-            setTargetTypeFilter(v);
-            setPage(1);
-          }}
-          allowClear
-          placeholder="Filter by target type"
-          style={{ width: 220 }}
-          options={[{ value: "Plant", label: "Plant" }]}
-        />
 
         <Button
-          onClick={() => setExpandedRowKeys(groupRowKeys)}
-          disabled={!groupRowKeys.length}
           icon={<ExpandOutlined />}
+          onClick={() => setExpandedRowKeys(groupRowKeys)}
+          disabled={loading || groupRowKeys.length === 0}
         >
           Expand All
         </Button>
+
         <Button
-          onClick={() => setExpandedRowKeys([])}
           icon={<CompressOutlined />}
+          onClick={() => setExpandedRowKeys([])}
+          disabled={loading || expandedRowKeys.length === 0}
         >
           Collapse All
         </Button>
@@ -769,12 +858,19 @@ const ActionPathRegistryPage: React.FC = () => {
         <Button
           type={editMode ? "primary" : "default"}
           onClick={editMode ? saveOrder : startEdit}
-          disabled={loading || total === 0}
+          disabled={
+            loading ||
+            (!editMode &&
+              groupedData.filter(
+                (r) => r.kind === "group" || r.kind === "ungrouped",
+              ).length === 0)
+          }
           loading={editMode ? savingOrder : false}
           icon={editMode ? <SaveOutlined /> : <EditOutlined />}
         >
           {editMode ? "Save Order" : "Change Order"}
         </Button>
+
         {editMode ? (
           <Button
             danger
@@ -790,7 +886,8 @@ const ActionPathRegistryPage: React.FC = () => {
         <DndContext
           sensors={sensors}
           modifiers={[restrictToVerticalAxis]}
-          onDragEnd={onDragEndGroups}
+          collisionDetection={collisionDetection}
+          onDragEnd={onDragEnd}
         >
           <SortableContext
             items={
@@ -807,12 +904,35 @@ const ActionPathRegistryPage: React.FC = () => {
               loading={loading}
               dataSource={groupedData}
               columns={columns}
-              components={editMode ? { body: { row: SortableRow } } : undefined}
+              components={
+                editMode ? { body: { row: SortableGroupRow } } : undefined
+              }
               expandable={{
                 childrenColumnName: "__children_disabled__",
                 expandedRowKeys,
                 onExpandedRowsChange: (keys) =>
                   setExpandedRowKeys([...(keys as React.Key[])]),
+                expandIcon: ({ expanded, onExpand, record }) => {
+                  const Icon = expanded
+                    ? CaretDownOutlined
+                    : CaretRightOutlined;
+                  return (
+                    <span
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onExpand(record, e);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Icon />
+                    </span>
+                  );
+                },
                 rowExpandable: (record) =>
                   record.kind === "group" || record.kind === "ungrouped",
                 expandedRowRender: (record) => {
@@ -824,7 +944,8 @@ const ActionPathRegistryPage: React.FC = () => {
                   if (
                     record.kind === "group" &&
                     record.path === "common" &&
-                    children.length === 0
+                    children.length === 0 &&
+                    !editMode
                   ) {
                     return (
                       <div style={{ padding: 16 }}>
@@ -832,14 +953,12 @@ const ActionPathRegistryPage: React.FC = () => {
                       </div>
                     );
                   }
+
                   const ids = children.map((c) => c.id);
+                  const ItemRow = makeSortableItemRow(record.key);
 
                   return (
-                    <DndContext
-                      sensors={sensors}
-                      modifiers={[restrictToVerticalAxis]}
-                      onDragEnd={onDragEndItems(record.key)}
-                    >
+                    <DroppableContainer id={record.key}>
                       <SortableContext
                         items={editMode ? ids : []}
                         strategy={verticalListSortingStrategy}
@@ -851,13 +970,11 @@ const ActionPathRegistryPage: React.FC = () => {
                           dataSource={children}
                           columns={itemColumns}
                           components={
-                            editMode
-                              ? { body: { row: SortableRow } }
-                              : undefined
+                            editMode ? { body: { row: ItemRow } } : undefined
                           }
                         />
                       </SortableContext>
-                    </DndContext>
+                    </DroppableContainer>
                   );
                 },
               }}
@@ -919,6 +1036,52 @@ const ActionPathRegistryPage: React.FC = () => {
           </Form.Item>
           <Form.Item label="Description" name="description">
             <Input.TextArea placeholder="Optional" rows={3} />
+          </Form.Item>
+
+          <Button htmlType="submit" style={{ display: "none" }} />
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Add Registry"
+        open={createRegistryModalOpen}
+        onCancel={closeCreateRegistryModal}
+        onOk={submitCreateRegistry}
+        confirmLoading={createRegistryLoading}
+        okText="Save"
+      >
+        <Form
+          form={createRegistryForm}
+          layout="vertical"
+          initialValues={{ actionPath: "", targetType: "", mappingJson: "" }}
+          onFinish={submitCreateRegistry}
+        >
+          <Form.Item
+            label="Action Path"
+            name="actionPath"
+            rules={[{ required: true, message: "Action Path is required" }]}
+          >
+            <Input placeholder="e.g. plant.watering" />
+          </Form.Item>
+
+          <Form.Item
+            label="Target Type"
+            name="targetType"
+            rules={[{ required: true, message: "Target Type is required" }]}
+          >
+            <Input placeholder="e.g. plant" />
+          </Form.Item>
+
+          <Form.Item
+            label="Mapping JSON"
+            name="mappingJson"
+            rules={[{ required: true, message: "Mapping JSON is required" }]}
+          >
+            <Input.TextArea rows={6} placeholder='{ "field": "value" }' />
+          </Form.Item>
+
+          <Form.Item label="Description" name="description">
+            <Input.TextArea rows={3} placeholder="Optional" />
           </Form.Item>
 
           <Button htmlType="submit" style={{ display: "none" }} />
