@@ -27,6 +27,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { actionPathRegistryService } from "@/services/actionPathRegistry";
+import { useNavigate } from "react-router-dom";
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
   closestCenter,
@@ -165,19 +166,12 @@ function getFilterFromActionPath(actionPath: string): string {
 }
 
 const ActionPathRegistryPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
   const [createGroupLoading, setCreateGroupLoading] = useState(false);
   const [createGroupForm] = Form.useForm<{
     path: string;
-    description?: string;
-  }>();
-
-  const [createRegistryModalOpen, setCreateRegistryModalOpen] = useState(false);
-  const [createRegistryLoading, setCreateRegistryLoading] = useState(false);
-  const [createRegistryForm] = Form.useForm<{
-    actionPath: string;
-    targetType: string;
-    mappingJson: string;
     description?: string;
   }>();
 
@@ -478,13 +472,8 @@ const ActionPathRegistryPage: React.FC = () => {
     setEditGroupId(null);
   };
 
-  const openCreateRegistryModal = () => {
-    createRegistryForm.resetFields();
-    setCreateRegistryModalOpen(true);
-  };
-
-  const closeCreateRegistryModal = () => {
-    setCreateRegistryModalOpen(false);
+  const openCreateRegistryPage = () => {
+    navigate("/registry/new");
   };
 
   const submitEditGroup = async () => {
@@ -524,27 +513,6 @@ const ActionPathRegistryPage: React.FC = () => {
       message.error(e?.message ?? "Failed to create group");
     } finally {
       setCreateGroupLoading(false);
-    }
-  };
-
-  const submitCreateRegistry = async () => {
-    try {
-      const values = await createRegistryForm.validateFields();
-      setCreateRegistryLoading(true);
-      await actionPathRegistryService.upsert({
-        actionPath: values.actionPath,
-        targetType: values.targetType,
-        mappingJson: values.mappingJson,
-        description: values.description,
-      });
-      message.success("Registry saved");
-      closeCreateRegistryModal();
-      await load();
-    } catch (e: any) {
-      if (e?.errorFields) return;
-      message.error(e?.message ?? "Failed to save registry");
-    } finally {
-      setCreateRegistryLoading(false);
     }
   };
 
@@ -755,6 +723,23 @@ const ActionPathRegistryPage: React.FC = () => {
         </span>
       ),
     },
+    {
+      title: "",
+      key: "actions",
+      width: 56,
+      render: (_, record) => (
+        <Button
+          size="small"
+          icon={<EditOutlined />}
+          aria-label="Edit"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate(`/registry/edit/${encodeURIComponent(record.actionPath)}`);
+          }}
+        />
+      ),
+    },
   ];
 
   const columns: ColumnsType<DraftRow> = [
@@ -824,7 +809,6 @@ const ActionPathRegistryPage: React.FC = () => {
             background: "#52c41a",
             borderColor: "#52c41a",
             color: "#fff",
-            boxShadow: "none",
           }}
         >
           Add Group
@@ -833,7 +817,7 @@ const ActionPathRegistryPage: React.FC = () => {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={openCreateRegistryModal}
+          onClick={openCreateRegistryPage}
           disabled={loading}
         >
           Add Registry
@@ -1036,52 +1020,6 @@ const ActionPathRegistryPage: React.FC = () => {
           </Form.Item>
           <Form.Item label="Description" name="description">
             <Input.TextArea placeholder="Optional" rows={3} />
-          </Form.Item>
-
-          <Button htmlType="submit" style={{ display: "none" }} />
-        </Form>
-      </Modal>
-
-      <Modal
-        title="Add Registry"
-        open={createRegistryModalOpen}
-        onCancel={closeCreateRegistryModal}
-        onOk={submitCreateRegistry}
-        confirmLoading={createRegistryLoading}
-        okText="Save"
-      >
-        <Form
-          form={createRegistryForm}
-          layout="vertical"
-          initialValues={{ actionPath: "", targetType: "", mappingJson: "" }}
-          onFinish={submitCreateRegistry}
-        >
-          <Form.Item
-            label="Action Path"
-            name="actionPath"
-            rules={[{ required: true, message: "Action Path is required" }]}
-          >
-            <Input placeholder="e.g. plant.watering" />
-          </Form.Item>
-
-          <Form.Item
-            label="Target Type"
-            name="targetType"
-            rules={[{ required: true, message: "Target Type is required" }]}
-          >
-            <Input placeholder="e.g. plant" />
-          </Form.Item>
-
-          <Form.Item
-            label="Mapping JSON"
-            name="mappingJson"
-            rules={[{ required: true, message: "Mapping JSON is required" }]}
-          >
-            <Input.TextArea rows={6} placeholder='{ "field": "value" }' />
-          </Form.Item>
-
-          <Form.Item label="Description" name="description">
-            <Input.TextArea rows={3} placeholder="Optional" />
           </Form.Item>
 
           <Button htmlType="submit" style={{ display: "none" }} />

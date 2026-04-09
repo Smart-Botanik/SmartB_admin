@@ -63,8 +63,35 @@ function validateMappingJson(mappingJson: string): string | null {
   }
 
   for (const [, value] of Object.entries(parsed as Record<string, unknown>)) {
-    if (typeof value !== "string") {
-      return "Mapping values must be strings (payloadKey -> currentKey)";
+    if (typeof value === "string") continue;
+
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return "Mapping values must be strings or objects ({ currentKey, type? })";
+    }
+
+    const v = value as Record<string, unknown>;
+    const currentKey = v.currentKey;
+    if (typeof currentKey !== "string" || currentKey.trim() === "") {
+      return "Mapping object must have non-empty currentKey";
+    }
+
+    if (v.type !== undefined) {
+      const t = v.type as unknown;
+      if (typeof t === "string") continue;
+
+      if (typeof t !== "object" || t === null || Array.isArray(t)) {
+        return "Mapping.type must be a string or an object (e.g. { enum: [...] })";
+      }
+
+      const tt = t as Record<string, unknown>;
+      if (tt.enum !== undefined) {
+        if (
+          !Array.isArray(tt.enum) ||
+          !tt.enum.every((x) => typeof x === "string")
+        ) {
+          return "Mapping.type.enum must be an array of strings";
+        }
+      }
     }
   }
 

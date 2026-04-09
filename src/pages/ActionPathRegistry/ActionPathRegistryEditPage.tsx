@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button, Space, Typography, message } from "antd";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ActionPathRegistryForm } from "./ActionPathRegistryForm";
+import { actionPathRegistryService } from "@/services/actionPathRegistry";
 
 const { Title } = Typography;
 
@@ -24,11 +25,29 @@ type LocationState = {
 const ActionPathRegistryEditPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const params = useParams();
+
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [loadedItem, setLoadedItem] = useState<LocationState["item"] | null>(
+    null,
+  );
 
   const state = (location.state ?? {}) as LocationState;
 
+  const resolvedActionPath = useMemo(() => {
+    const raw = params.actionPath;
+    if (!raw) return "";
+    try {
+      return decodeURIComponent(String(raw));
+    } catch {
+      return String(raw);
+    }
+  }, [params.actionPath]);
+
+  const item = state.item ?? loadedItem;
+
   const initialValues = useMemo(() => {
-    const item = state.item;
     if (!item) return null;
 
     return {
@@ -39,14 +58,64 @@ const ActionPathRegistryEditPage: React.FC = () => {
       conditionsJson: JSON.stringify(item.conditions ?? [], null, 2),
       tagId: item.tagId ?? null,
     };
-  }, [state.item]);
+  }, [item]);
 
   useEffect(() => {
-    if (!initialValues) {
+    if (state.item) return;
+    if (!resolvedActionPath) return;
+
+    let cancelled = false;
+    setNotFound(false);
+    setLoading(true);
+    void (async () => {
+      try {
+        type RegistryListResponse = Awaited<
+          ReturnType<typeof actionPathRegistryService.list>
+        >;
+        type RegistryListItem = RegistryListResponse["items"][number];
+
+        const limit = 200;
+        let offset = 0;
+        let found: RegistryListItem | undefined;
+        let total = Infinity;
+
+        while (!cancelled && offset < total) {
+          const resp = await actionPathRegistryService.list({
+            limit,
+            offset,
+          });
+          total = resp.total;
+          found = resp.items.find((x) => x.actionPath === resolvedActionPath);
+          if (found) break;
+          offset += limit;
+          if (resp.items.length === 0) break;
+        }
+
+        if (!found) {
+          setNotFound(true);
+          return;
+        }
+        if (cancelled) return;
+        setLoadedItem(found);
+      } catch (e: any) {
+        message.error(e?.message ?? "Failed to load registry");
+        navigate("/registry", { replace: true });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, resolvedActionPath, state.item]);
+
+  useEffect(() => {
+    if (!initialValues && !loading && notFound) {
       message.error("Missing registry data. Please open edit from the list.");
       navigate("/registry", { replace: true });
     }
-  }, [initialValues, navigate]);
+  }, [initialValues, loading, navigate, notFound]);
 
   if (!initialValues) return null;
 
