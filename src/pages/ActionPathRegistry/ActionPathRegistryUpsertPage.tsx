@@ -11,7 +11,7 @@ const ActionPathRegistryUpsertPage: React.FC = () => {
   return (
     <div>
       <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 16 }}>
-        <Title level={2} style={{ margin: 0 }}>
+        <Title level={2} style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
           Registry Editor
         </Title>
         <Button onClick={() => navigate("/registry")}>Back to list</Button>

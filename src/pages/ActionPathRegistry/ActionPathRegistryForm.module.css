@@ -1,0 +1,4 @@
+/* Bold field labels; keep help text (extra) at default weight via Ant Design structure */
+.formBoldLabels :global(.ant-form-item-label > label) {
+  font-weight: 600;
+}

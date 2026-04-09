@@ -128,7 +128,7 @@ const ActionPathRegistryEditPage: React.FC = () => {
           marginBottom: 16,
         }}
       >
-        <Title level={2} style={{ margin: 0 }}>
+        <Title level={2} style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
           Edit Registry
         </Title>
         <Button onClick={() => navigate("/registry")}>Back to list</Button>

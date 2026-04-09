@@ -777,13 +777,15 @@ const ActionPathRegistryPage: React.FC = () => {
             size="small"
             icon={<EditOutlined />}
             aria-label="Edit"
-            onClick={() =>
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               openEditGroupModal({
                 id: record.groupId,
                 path: record.path,
                 description: record.description,
-              })
-            }
+              });
+            }}
           />
         );
       },
@@ -891,6 +893,25 @@ const ActionPathRegistryPage: React.FC = () => {
               components={
                 editMode ? { body: { row: SortableGroupRow } } : undefined
               }
+              onRow={(record) => {
+                const expandable =
+                  record.kind === "group" || record.kind === "ungrouped";
+                if (!expandable || editMode) {
+                  return {};
+                }
+                return {
+                  onClick: () => {
+                    setExpandedRowKeys((keys) => {
+                      const k = record.key;
+                      if (keys.includes(k)) {
+                        return keys.filter((x) => x !== k);
+                      }
+                      return [...keys, k];
+                    });
+                  },
+                  style: { cursor: "pointer" },
+                };
+              }}
               expandable={{
                 childrenColumnName: "__children_disabled__",
                 expandedRowKeys,

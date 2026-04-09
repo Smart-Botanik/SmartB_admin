@@ -15,6 +15,15 @@ import { CloseOutlined } from "@ant-design/icons";
 import { actionPathRegistryService } from "@/services/actionPathRegistry";
 import { tagsService, type TagListItem } from "@/services/tags";
 import { copyToClipboard } from "@/utils/helpers";
+import {
+  collectMappingLeafPaths,
+  mappingHasNestedBranches,
+  removeMappingPath,
+  validateMappingJsonDeep,
+} from "@/components/MappingJsonBuilder";
+import { MappingJsonFormField } from "./MappingJsonFormField";
+
+import styles from "./ActionPathRegistryForm.module.css";
 
 const { Text, Title } = Typography;
 
@@ -49,54 +58,6 @@ type AutoTagRuleFormValue = {
   logic?: "AND" | "OR" | null;
   conditions?: AutoTagConditionFormValue[];
 };
-
-function validateMappingJson(mappingJson: string): string | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(mappingJson);
-  } catch {
-    return "Invalid JSON";
-  }
-
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return "Mapping must be a JSON object";
-  }
-
-  for (const [, value] of Object.entries(parsed as Record<string, unknown>)) {
-    if (typeof value === "string") continue;
-
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return "Mapping values must be strings or objects ({ currentKey, type? })";
-    }
-
-    const v = value as Record<string, unknown>;
-    const currentKey = v.currentKey;
-    if (typeof currentKey !== "string" || currentKey.trim() === "") {
-      return "Mapping object must have non-empty currentKey";
-    }
-
-    if (v.type !== undefined) {
-      const t = v.type as unknown;
-      if (typeof t === "string") continue;
-
-      if (typeof t !== "object" || t === null || Array.isArray(t)) {
-        return "Mapping.type must be a string or an object (e.g. { enum: [...] })";
-      }
-
-      const tt = t as Record<string, unknown>;
-      if (tt.enum !== undefined) {
-        if (
-          !Array.isArray(tt.enum) ||
-          !tt.enum.every((x) => typeof x === "string")
-        ) {
-          return "Mapping.type.enum must be an array of strings";
-        }
-      }
-    }
-  }
-
-  return null;
-}
 
 export const ActionPathRegistryForm: React.FC<{
   title?: string;
@@ -279,9 +240,10 @@ export const ActionPathRegistryForm: React.FC<{
   const mappingKeyOptions = useMemo(() => {
     if (!parsedMapping.obj)
       return [] as Array<{ value: string; label: string }>;
-    return Object.keys(parsedMapping.obj)
-      .sort((a, b) => a.localeCompare(b))
-      .map((k) => ({ value: k, label: k }));
+    return collectMappingLeafPaths(parsedMapping.obj).map((p) => ({
+      value: p,
+      label: p,
+    }));
   }, [parsedMapping.obj]);
 
   const parsedAutoTagRules = useMemo(() => {
@@ -313,8 +275,13 @@ export const ActionPathRegistryForm: React.FC<{
 
   const unknownKeys = useMemo(() => {
     if (!parsedMapping.obj) return [] as string[];
+    const paths = collectMappingLeafPaths(parsedMapping.obj);
     const suggested = new Set(plantSuggestedKeys);
-    return Object.keys(parsedMapping.obj).filter((k) => !suggested.has(k));
+    return paths.filter((p) => {
+      if (suggested.has(p)) return false;
+      const last = p.split(".").pop() ?? p;
+      return !suggested.has(last);
+    });
   }, [parsedMapping.obj, plantSuggestedKeys]);
 
   const setMappingKey = (key: string, enabled: boolean) => {
@@ -332,8 +299,13 @@ export const ActionPathRegistryForm: React.FC<{
     form.setFieldValue("mappingJson", JSON.stringify(next, null, 2));
   };
 
-  const removeUnknownKey = (key: string) => {
-    setMappingKey(key, false);
+  const removeUnknownKey = (path: string) => {
+    if (!parsedMapping.obj) {
+      message.error(parsedMapping.error ?? "Invalid mappingJson");
+      return;
+    }
+    const next = removeMappingPath(parsedMapping.obj, path);
+    form.setFieldValue("mappingJson", JSON.stringify(next, null, 2));
   };
 
   const copyKey = async (key: string) => {
@@ -343,7 +315,7 @@ export const ActionPathRegistryForm: React.FC<{
   };
 
   const onSubmit = async (values: FormValues) => {
-    const mappingError = validateMappingJson(values.mappingJson);
+    const mappingError = validateMappingJsonDeep(values.mappingJson);
     if (mappingError) {
       message.error(mappingError);
       return;
@@ -579,12 +551,13 @@ export const ActionPathRegistryForm: React.FC<{
           marginBottom: 16,
         }}
       >
-        <Title level={4} style={{ margin: 0 }}>
+        <Title level={3} style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
           {title}
         </Title>
       </Space>
 
       <Form<FormValues>
+        className={styles.formBoldLabels}
         form={form}
         layout="vertical"
         onFinish={onSubmit}
@@ -735,10 +708,17 @@ export const ActionPathRegistryForm: React.FC<{
 
         <Form.Item
           name="mappingJson"
-          label="Mapping JSON (payloadKey -> plant.currentKey)"
+          label="Mapping JSON (payload key → entity current)"
           rules={[{ required: true, message: "Mapping JSON is required" }]}
+          extra={
+            <Text type="secondary">
+              Edit as JSON string below. Use{" "}
+              <Text strong>Open visual mapping builder</Text> only when you want
+              the table/tree UI; leaf paths still drive condition field options.
+            </Text>
+          }
         >
-          <Input.TextArea rows={10} />
+          <MappingJsonFormField />
         </Form.Item>
 
         <Form.Item name="tagId" label="Tag (optional)">
@@ -1045,6 +1025,14 @@ export const ActionPathRegistryForm: React.FC<{
             </Button>
           </Space>
           <div style={{ marginTop: 8 }}>
+            {parsedMapping.obj &&
+            mappingHasNestedBranches(parsedMapping.obj) ? (
+              <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                Nested mapping: toggles only add or remove{" "}
+                <Text strong>root-level</Text> shorthand keys. Use the mapping
+                editor for branches.
+              </Text>
+            ) : null}
             <Space wrap>
               {plantSuggestedKeys.map((k) => (
                 <span key={k} onDoubleClick={() => copyKey(k)}>
@@ -1095,8 +1083,9 @@ export const ActionPathRegistryForm: React.FC<{
         </Card>
 
         <Text type="secondary">
-          MVP limitation: mapping keys are flat. Dates should be stored as ISO
-          strings.
+          Nested objects cannot mix <Text code>currentKey</Text> with child keys
+          in the same JSON object. Dates in <Text code>current</Text> should be
+          ISO strings.
         </Text>
 
         <div style={{ marginTop: 16 }}>
