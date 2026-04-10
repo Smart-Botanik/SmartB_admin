@@ -105,16 +105,36 @@ class MediaApiService {
       }
 
       try {
-        const response = await this.api.post<MediaUploadResponse>(
-          "/media/admin/media/upload",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
+        const response = await this.api.post<{
+          id: string;
+          url: string;
+          mime?: string;
+          mimeType?: string;
+          size?: number;
+          width?: number;
+          height?: number;
+          createdAt: string;
+        }>("/media/admin/media/upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
           },
-        );
-        return response.data;
+        });
+        const raw = response.data;
+        const mapped: MediaUploadResponse = {
+          id: raw.id,
+          name: file.name,
+          url: raw.url,
+          size: raw.size ?? file.size,
+          mimeType:
+            (raw.mimeType ?? raw.mime ?? file.type) || "application/octet-stream",
+          width: raw.width,
+          height: raw.height,
+          createdAt:
+            typeof raw.createdAt === "string"
+              ? raw.createdAt
+              : new Date(raw.createdAt).toISOString(),
+        };
+        return mapped;
       } catch (error) {
         throw this.handleError(error);
       }

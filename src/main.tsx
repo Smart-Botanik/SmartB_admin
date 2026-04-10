@@ -15,7 +15,7 @@ import DashboardPage from "@/pages/Dashboard";
 import LoginPage from "@/pages/Login";
 import MediaLibrary from "@/pages/Media";
 import ComponentDemo from "@/pages/ComponentDemo";
-import BrandsPage from "@/pages/Brands";
+import BrandsPage, { BrandCreatePage, BrandEditPage } from "@/pages/Brands";
 import {
   EventsListPage,
   EventEditPage,
@@ -124,6 +124,14 @@ const App: React.FC = () => {
                       <Routes>
                         <Route index element={<DashboardPage />} />
                         <Route path="/brands" element={<BrandsPage />} />
+                        <Route
+                          path="/brands/create"
+                          element={<BrandCreatePage />}
+                        />
+                        <Route
+                          path="/brands/edit/:id"
+                          element={<BrandEditPage />}
+                        />
                         <Route path="/media" element={<MediaLibrary />} />
                         <Route path="/events" element={<EventsListPage />} />
                         <Route

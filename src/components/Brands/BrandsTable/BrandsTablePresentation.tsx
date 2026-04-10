@@ -1,6 +1,7 @@
 import React from "react";
-import { Image, Tag } from "antd";
+import { Button, Image, Tag } from "antd";
 import type { TableProps } from "antd";
+import { EditOutlined } from "@ant-design/icons";
 
 import type { Brand } from "@/types/brand";
 import {
@@ -14,10 +15,13 @@ export interface BrandsTablePresentationProps
     "columns" | "rowKey" | "dataSource"
   > {
   brands: Brand[];
+  /** Кнопка «Редактировать» в последней колонке (например переход в `/brands/edit/:id`). */
+  onEditRow?: (brand: Brand) => void;
 }
 
 export const BrandsTablePresentation: React.FC<BrandsTablePresentationProps> = ({
   brands,
+  onEditRow,
   ...props
 }) => {
   const columns: TableProps<Brand>["columns"] = [
@@ -61,6 +65,24 @@ export const BrandsTablePresentation: React.FC<BrandsTablePresentationProps> = (
       render: (value?: string) =>
         value ? new Date(value).toLocaleDateString() : "-",
     },
+    ...(onEditRow
+      ? [
+          {
+            title: "",
+            key: "actions",
+            width: 56,
+            align: "center" as const,
+            render: (_: unknown, record: Brand) => (
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                aria-label="Редактировать бренд"
+                onClick={() => onEditRow(record)}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (

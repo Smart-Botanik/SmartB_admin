@@ -6,7 +6,8 @@ import type { TablePaginationConfig, TableProps } from "antd";
 const { Title } = Typography;
 
 export interface EntityTableHeaderProps {
-  title: string;
+  /** Если пусто — заголовок таблицы не рендерится (внешний заголовок страницы). */
+  title?: string | null;
   searchPlaceholder?: string;
   searchValue?: string;
   showBackButton?: boolean;
@@ -70,9 +71,11 @@ export const EntityTablePresentation = <T extends object>({
                   {backButtonText}
                 </Button>
               )}
-              <Title level={2} style={{ margin: 0 }}>
-                {title}
-              </Title>
+              {title ? (
+                <Title level={2} style={{ margin: 0 }}>
+                  {title}
+                </Title>
+              ) : null}
             </Space>
 
             {(onSearchChange || onSearchSubmit) && (

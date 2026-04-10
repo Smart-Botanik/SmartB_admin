@@ -23,6 +23,7 @@ const BRANDS_QUERY = `
         id
         name
         category
+        description
         avatar { id url }
         createdAt
         updatedAt
@@ -30,6 +31,75 @@ const BRANDS_QUERY = `
     }
   }
 `;
+
+const BRAND_QUERY = `
+  query Brand($id: ID!) {
+    brand(id: $id) {
+      id
+      name
+      category
+      description
+      avatar { id url }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const CREATE_BRAND_MUTATION = `
+  mutation CreateBrand($input: CreateBrandInput!) {
+    createBrand(input: $input) {
+      id
+      name
+      category
+      description
+      avatar { id url }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const UPDATE_BRAND_MUTATION = `
+  mutation UpdateBrand($id: ID!, $input: UpdateBrandInput!) {
+    updateBrand(id: $id, input: $input) {
+      id
+      name
+      category
+      description
+      avatar { id url }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export interface CreateBrandInput {
+  name: string;
+  category: string;
+  description?: string | null;
+  avatarMediaId?: string | null;
+}
+
+export interface UpdateBrandInput {
+  name?: string | null;
+  category?: string | null;
+  description?: string | null;
+  /** Передайте null, чтобы сбросить аватар; опустите поле, чтобы не менять. */
+  avatarMediaId?: string | null;
+}
+
+interface CreateBrandResponse {
+  createBrand: Brand;
+}
+
+interface BrandQueryResponse {
+  brand: Brand | null;
+}
+
+interface UpdateBrandResponse {
+  updateBrand: Brand;
+}
 
 class BrandsService {
   async list(params: BrandsListParams = {}) {
@@ -45,6 +115,39 @@ class BrandsService {
     });
 
     return data.brands;
+  }
+
+  async getById(id: string) {
+    const data = await graphqlClient.request<BrandQueryResponse, { id: string }>({
+      query: BRAND_QUERY,
+      variables: { id },
+      operationName: "Brand",
+    });
+    return data.brand;
+  }
+
+  async create(input: CreateBrandInput) {
+    const data = await graphqlClient.request<
+      CreateBrandResponse,
+      { input: CreateBrandInput }
+    >({
+      query: CREATE_BRAND_MUTATION,
+      variables: { input },
+      operationName: "CreateBrand",
+    });
+    return data.createBrand;
+  }
+
+  async update(id: string, input: UpdateBrandInput) {
+    const data = await graphqlClient.request<
+      UpdateBrandResponse,
+      { id: string; input: UpdateBrandInput }
+    >({
+      query: UPDATE_BRAND_MUTATION,
+      variables: { id, input },
+      operationName: "UpdateBrand",
+    });
+    return data.updateBrand;
   }
 }
 

@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { message } from "antd";
+import { useNavigate } from "react-router-dom";
+import { Button, message, Space, Typography } from "antd";
 import type { TablePaginationConfig, TableProps } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 
 import { BrandsTablePresentation } from "@/components/Brands";
 import type { Brand } from "@/types/brand";
 import { brandsService } from "@/services/brands";
 
+const { Title } = Typography;
+
 const BrandsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -78,19 +83,33 @@ const BrandsPage: React.FC = () => {
   };
 
   return (
-    <BrandsTablePresentation
-      title="Brands"
-      brands={brands}
-      searchPlaceholder="Search brands..."
-      searchValue={searchValue}
-      onSearchChange={(v) => {
-        setSearchValue(v);
-        setPage(1);
-      }}
-      loading={isLoading}
-      pagination={pagination}
-      onTableChange={handleTableChange}
-    />
+    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space align="center" style={{ width: "100%", justifyContent: "space-between" }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Бренды
+        </Title>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => navigate("/brands/create")}
+        >
+          Создать бренд
+        </Button>
+      </Space>
+      <BrandsTablePresentation
+        brands={brands}
+        searchPlaceholder="Search brands..."
+        searchValue={searchValue}
+        onSearchChange={(v) => {
+          setSearchValue(v);
+          setPage(1);
+        }}
+        loading={isLoading}
+        pagination={pagination}
+        onTableChange={handleTableChange}
+        onEditRow={(b) => navigate(`/brands/edit/${b.id}`)}
+      />
+    </Space>
   );
 };
 

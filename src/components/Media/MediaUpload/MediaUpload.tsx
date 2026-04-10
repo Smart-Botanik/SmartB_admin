@@ -10,6 +10,8 @@ interface MediaUploadProps {
   maxSize?: number; // in bytes
   multiple?: boolean;
   showProgress?: boolean;
+  /** Подкаталог хранилища (например `brands` для логотипов брендов). */
+  storageFolder?: string;
   uploadedFiles?: MediaUploadResponse[]; // For initialization in stories/testing
 }
 
@@ -20,6 +22,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
   maxSize = 10 * 1024 * 1024, // 10MB
   multiple = true,
   showProgress = true,
+  storageFolder,
   uploadedFiles: initialUploadedFiles = [],
 }) => {
   const [uploading, setUploading] = useState(false);
@@ -37,7 +40,10 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
     setProgress(0);
 
     try {
-      const response = await mediaApi.uploadFiles([file]);
+      const response = await mediaApi.uploadFiles(
+        [file],
+        storageFolder && storageFolder !== "root" ? storageFolder : undefined,
+      );
       const newFiles = [...uploadedFiles, ...response];
       setUploadedFiles(newFiles);
       onUploadComplete?.(newFiles);
