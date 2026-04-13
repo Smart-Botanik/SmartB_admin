@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Table,
   Image,
@@ -19,6 +20,8 @@ import {
   Input,
   Select,
   List,
+  Progress,
+  Switch,
 } from "antd";
 import {
   PlusOutlined,
@@ -32,15 +35,96 @@ import {
   FilterOutlined,
   FolderAddOutlined,
   ReloadOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import { useNavigation } from "@refinedev/core";
 import ImgCrop from "antd-img-crop";
-import mediaApi, { MediaItem } from "@/services/media";
+import mediaApi, { MediaItem, MediaUploadResponse } from "@/services/media";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 const { Search } = Input;
 const { Option } = Select;
+
+function readMediaPathFromSearch(): { folder: string; pathSegments: string[] } {
+  if (typeof window === "undefined") {
+    return { folder: "root", pathSegments: [] };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("path");
+  if (!raw) {
+    return { folder: "root", pathSegments: [] };
+  }
+  const pathSegments = raw.split("/").filter(Boolean);
+  if (pathSegments.length === 0) {
+    return { folder: "root", pathSegments: [] };
+  }
+  return { folder: pathSegments.join("/"), pathSegments };
+}
+
+/** Fallback only when the API request fails */
+const MOCK_MEDIA_FALLBACK: MediaItem[] = [
+  {
+    id: "cmndtac2v0002dmz25py3lufy",
+    provider: "local",
+    bucket: "uploads",
+    key: "general/2026/03/d73cf1e4-8a8c-4ab7-9984-a0acec45f947-631769c4fef357b6e61e4a5296a9f093.jpg",
+    url: "http://localhost:3001/uploads/general/2026/03/d73cf1e4-8a8c-4ab7-9984-a0acec45f947-631769c4fef357b6e61e4a5296a9f093.jpg",
+    mime: "image/jpeg",
+    size: 267286,
+    width: undefined,
+    height: undefined,
+    createdAt: "2026-03-30T23:20:55.207Z",
+    name: "d73cf1e4-8a8c-4ab7-9984-a0acec45f947-631769c4fef357b6e61e4a5296a9f093.jpg",
+    type: "image",
+    folder: "general/2026/03",
+  },
+  {
+    id: "cmndta1p60001dmz2z0ve5qmn",
+    provider: "local",
+    bucket: "uploads",
+    key: "general/2026/03/83300d4b-9d65-4d32-9502-e4143253339d-70a59f26bb77c67ada2166e6b9865c30.jpg",
+    url: "http://localhost:3001/uploads/general/2026/03/83300d4b-9d65-4d32-9502-e4143253339d-70a59f26bb77c67ada2166e6b9865c30.jpg",
+    mime: "image/jpeg",
+    size: 121142,
+    width: undefined,
+    height: undefined,
+    createdAt: "2026-03-30T23:20:41.743Z",
+    name: "83300d4b-9d65-4d32-9502-e4143253339d-70a59f26bb77c67ada2166e6b9865c30.jpg",
+    type: "image",
+    folder: "general/2026/03",
+  },
+  {
+    id: "cmndta1ox0000dmz2netetn9c",
+    provider: "local",
+    bucket: "uploads",
+    key: "general/2026/03/15916859-e186-46a2-b14a-90af64fae41b-631769c4fef357b6e61e4a5296a9f093.jpg",
+    url: "http://localhost:3001/uploads/general/2026/03/15916859-e186-46a2-b14a-90af64fae41b-631769c4fef357b6e61e4a5296a9f093.jpg",
+    mime: "image/jpeg",
+    size: 267286,
+    width: undefined,
+    height: undefined,
+    createdAt: "2026-03-30T23:20:41.741Z",
+    name: "15916859-e186-46a2-b14a-90af64fae41b-631769c4fef357b6e61e4a5296a9f093.jpg",
+    type: "image",
+    folder: "general/2026/03",
+  },
+  {
+    id: "cmnc7aakta0000szsoufk3zidi",
+    provider: "local",
+    bucket: "uploads",
+    key: "brands/brands/02788192-7a14-4a02-b464-d02c2fce90f1-Trikoma_Seeds.png",
+    url: "http://localhost:3001/uploads/brands/brands/02788192-7a14-4a02-b464-d02c2fce90f1-Trikoma_Seeds.png",
+    mime: "image/png",
+    size: 4391,
+    width: undefined,
+    height: undefined,
+    createdAt: "2026-03-29T20:17:28.796Z",
+    name: "02788192-7a14-4a02-b464-d02c2fce90f1-Trikoma_Seeds.png",
+    type: "image",
+    folder: "brands/brands",
+  },
+];
 
 interface UploadPreview {
   file: File;
@@ -50,12 +134,25 @@ interface UploadPreview {
 }
 
 const MediaLibrary: React.FC = () => {
+  const initialPath = readMediaPathFromSearch();
+  const [, setSearchParams] = useSearchParams();
+
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
   const [isNewFolderModalVisible, setIsNewFolderModalVisible] = useState(false);
-  const [currentFolder, setCurrentFolder] = useState<string>("root");
-  const [folderPath, setFolderPath] = useState<string[]>(["root"]);
+  const [currentFolder, setCurrentFolder] = useState<string>(initialPath.folder);
+  const [folderPath, setFolderPath] = useState<string[]>(() =>
+    initialPath.pathSegments.length > 0
+      ? ["root", ...initialPath.pathSegments]
+      : ["root"],
+  );
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadPreviews, setUploadPreviews] = useState<UploadPreview[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<MediaUploadResponse[]>([]);
+  const [uploadPercent, setUploadPercent] = useState<number>(0);
+  const [uploadFileProgress, setUploadFileProgress] = useState<
+    Record<string, number>
+  >({});
+  const [enableCrop, setEnableCrop] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterType, setFilterType] = useState<string>("all");
   const [newFolderName, setNewFolderName] = useState<string>("");
@@ -67,29 +164,59 @@ const MediaLibrary: React.FC = () => {
 
   const { edit, show } = useNavigation();
 
-  // Load media data on component mount and when folder changes
-  useEffect(() => {
-    loadMediaData();
-  }, [currentFolder, searchTerm, filterType]);
+  const listQuery = useMemo(
+    () => ({
+      folder: currentFolder === "root" ? undefined : currentFolder,
+      search: searchTerm || undefined,
+      type: filterType as "all" | "folder" | "image",
+    }),
+    [currentFolder, searchTerm, filterType],
+  );
 
-  const loadMediaData = async () => {
-    setLoading(true);
-    try {
-      const response = await mediaApi.getMediaList({
-        folder: currentFolder === "root" ? undefined : currentFolder,
-        search: searchTerm || undefined,
-        type: filterType as "all" | "folder" | "image",
-      });
-      setMediaData(response.media);
-    } catch (error) {
-      console.error("Failed to load media data:", error);
-      message.error("Failed to load media files");
-      // Use mock data as fallback
-      setMediaData(mockMediaData);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const next = currentFolder === "root" ? "" : currentFolder;
+    const cur = new URLSearchParams(window.location.search).get("path") || "";
+    if (next === cur) {
+      return;
     }
-  };
+    if (next) {
+      setSearchParams({ path: next }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  }, [currentFolder, setSearchParams]);
+
+  // Load media when folder / filters change; drop stale responses if folder switched mid-flight
+  useEffect(() => {
+    let alive = true;
+
+    setLoading(true);
+    mediaApi
+      .getMediaList(listQuery)
+      .then((response) => {
+        if (!alive) {
+          return;
+        }
+        setMediaData(response.media);
+      })
+      .catch((error) => {
+        if (!alive) {
+          return;
+        }
+        console.error("Failed to load media data:", error);
+        message.error("Failed to load media files");
+        setMediaData(MOCK_MEDIA_FALLBACK);
+      })
+      .finally(() => {
+        if (alive) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [listQuery]);
 
   // Get available folders for upload dropdown
   const getAvailableFolders = () => {
@@ -104,70 +231,6 @@ const MediaLibrary: React.FC = () => {
 
     return Array.from(folders).sort();
   };
-
-  // Mock data for demonstration - matches backend structure
-  const mockMediaData: MediaItem[] = [
-    {
-      id: "cmndtac2v0002dmz25py3lufy",
-      provider: "local",
-      bucket: "uploads",
-      key: "general/2026/03/d73cf1e4-8a8c-4ab7-9984-a0acec45f947-631769c4fef357b6e61e4a5296a9f093.jpg",
-      url: "http://localhost:3001/uploads/general/2026/03/d73cf1e4-8a8c-4ab7-9984-a0acec45f947-631769c4fef357b6e61e4a5296a9f093.jpg",
-      mime: "image/jpeg",
-      size: 267286,
-      width: undefined,
-      height: undefined,
-      createdAt: "2026-03-30T23:20:55.207Z",
-      name: "d73cf1e4-8a8c-4ab7-9984-a0acec45f947-631769c4fef357b6e61e4a5296a9f093.jpg",
-      type: "image",
-      folder: "general/2026/03",
-    },
-    {
-      id: "cmndta1p60001dmz2z0ve5qmn",
-      provider: "local",
-      bucket: "uploads",
-      key: "general/2026/03/83300d4b-9d65-4d32-9502-e4143253339d-70a59f26bb77c67ada2166e6b9865c30.jpg",
-      url: "http://localhost:3001/uploads/general/2026/03/83300d4b-9d65-4d32-9502-e4143253339d-70a59f26bb77c67ada2166e6b9865c30.jpg",
-      mime: "image/jpeg",
-      size: 121142,
-      width: undefined,
-      height: undefined,
-      createdAt: "2026-03-30T23:20:41.743Z",
-      name: "83300d4b-9d65-4d32-9502-e4143253339d-70a59f26bb77c67ada2166e6b9865c30.jpg",
-      type: "image",
-      folder: "general/2026/03",
-    },
-    {
-      id: "cmndta1ox0000dmz2netetn9c",
-      provider: "local",
-      bucket: "uploads",
-      key: "general/2026/03/15916859-e186-46a2-b14a-90af64fae41b-631769c4fef357b6e61e4a5296a9f093.jpg",
-      url: "http://localhost:3001/uploads/general/2026/03/15916859-e186-46a2-b14a-90af64fae41b-631769c4fef357b6e61e4a5296a9f093.jpg",
-      mime: "image/jpeg",
-      size: 267286,
-      width: undefined,
-      height: undefined,
-      createdAt: "2026-03-30T23:20:41.741Z",
-      name: "15916859-e186-46a2-b14a-90af64fae41b-631769c4fef357b6e61e4a5296a9f093.jpg",
-      type: "image",
-      folder: "general/2026/03",
-    },
-    {
-      id: "cmnc7aakta0000szsoufk3zidi",
-      provider: "local",
-      bucket: "uploads",
-      key: "brands/brands/02788192-7a14-4a02-b464-d02c2fce90f1-Trikoma_Seeds.png",
-      url: "http://localhost:3001/uploads/brands/brands/02788192-7a14-4a02-b464-d02c2fce90f1-Trikoma_Seeds.png",
-      mime: "image/png",
-      size: 4391,
-      width: undefined,
-      height: undefined,
-      createdAt: "2026-03-29T20:17:28.796Z",
-      name: "02788192-7a14-4a02-b464-d02c2fce90f1-Trikoma_Seeds.png",
-      type: "image",
-      folder: "brands/brands",
-    },
-  ];
 
   // Filter data based on current folder, search term, and filter type
   const getFilteredData = () => {
@@ -218,29 +281,66 @@ const MediaLibrary: React.FC = () => {
 
   const handleBreadcrumbClick = (path: string[]) => {
     const validPath = path.filter(Boolean);
-    setFolderPath(validPath);
-    if (
-      validPath.length <= 1 ||
-      (validPath.length === 1 && validPath[0] === "root")
-    ) {
+    if (validPath.length === 0 || validPath[0] !== "root") {
+      setFolderPath(["root"]);
       setCurrentFolder("root");
-    } else {
-      setCurrentFolder(validPath.join("/"));
+      return;
     }
+    setFolderPath(validPath);
+    const segments = validPath.slice(1);
+    setCurrentFolder(segments.length === 0 ? "root" : segments.join("/"));
   };
 
   const handleFolderClick = (folder: MediaItem) => {
-    const folderName = folder.name || "unknown";
-    const folderPath = folder.key || folderName; // Use the key which contains the full path
-    const newPath = folderPath.split("/");
-    setFolderPath(newPath);
-    setCurrentFolder(folderPath);
-    message.info(`Navigating to folder: ${folderName}`);
+    const pathKey = folder.key || folder.name || "";
+    const segments = pathKey.split("/").filter(Boolean);
+    if (segments.length === 0) {
+      return;
+    }
+    setFolderPath(["root", ...segments]);
+    setCurrentFolder(segments.join("/"));
   };
 
   const handleBackToRoot = () => {
     setFolderPath(["root"]);
     setCurrentFolder("root");
+  };
+
+  const handleNavigateBack = () => {
+    if (folderPath.length <= 2) {
+      handleBackToRoot();
+      return;
+    }
+    const parentSegments = folderPath.slice(1, -1);
+    handleBreadcrumbClick(["root", ...parentSegments]);
+  };
+
+  const handleRefresh = () => {
+    setLoading(true);
+    mediaApi
+      .getMediaList(listQuery)
+      .then((response) => {
+        setMediaData(response.media);
+        message.success("Медиатека обновлена");
+      })
+      .catch((error) => {
+        console.error("Failed to refresh media:", error);
+        message.error("Не удалось обновить список");
+        setMediaData(MOCK_MEDIA_FALLBACK);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const silentRefetchMedia = () => {
+    setLoading(true);
+    mediaApi
+      .getMediaList(listQuery)
+      .then((response) => setMediaData(response.media))
+      .catch((error) => {
+        console.error("Failed to refetch media:", error);
+        message.error("Не удалось обновить список");
+      })
+      .finally(() => setLoading(false));
   };
 
   const handleCreateFolder = async () => {
@@ -258,15 +358,10 @@ const MediaLibrary: React.FC = () => {
       );
       setNewFolderName("");
       setIsNewFolderModalVisible(false);
-      loadMediaData(); // Reload data to show new folder
+      silentRefetchMedia();
     } catch (error: any) {
       message.error(error.message || "Failed to create folder");
     }
-  };
-
-  const handleRefresh = () => {
-    loadMediaData();
-    message.info("Refreshing media library...");
   };
 
   const columns = [
@@ -396,7 +491,7 @@ const MediaLibrary: React.FC = () => {
         await mediaApi.deleteMediaItem(record.id);
       }
       message.success("Item deleted successfully");
-      loadMediaData(); // Reload data
+      silentRefetchMedia();
     } catch (error: any) {
       message.error(error.message || "Failed to delete item");
     }
@@ -404,6 +499,12 @@ const MediaLibrary: React.FC = () => {
 
   const handleUpload = () => {
     setSelectedUploadFolder(currentFolder);
+    setSelectedFiles([]);
+    setUploadPreviews([]);
+    setUploadedFiles([]);
+    setUploadPercent(0);
+    setUploadFileProgress({});
+    setEnableCrop(true);
     setIsUploadModalVisible(true);
   };
 
@@ -414,6 +515,13 @@ const MediaLibrary: React.FC = () => {
       .filter(Boolean);
 
     setSelectedFiles(files);
+    setUploadFileProgress({});
+    setUploadPercent(0);
+
+    setUploadPreviews((prev) => {
+      prev.forEach((preview) => mediaApi.revokePreviewUrl(preview.preview));
+      return [];
+    });
 
     // Create previews for image files
     const previews: UploadPreview[] = files
@@ -436,20 +544,37 @@ const MediaLibrary: React.FC = () => {
 
     setUploading(true);
     try {
-      await mediaApi.uploadFiles(selectedFiles, selectedUploadFolder);
+      const uploaded = await mediaApi.uploadFiles(
+        selectedFiles,
+        selectedUploadFolder,
+        {
+          onProgress: ({ totalPercent, filePercent, fileName }) => {
+            setUploadPercent(totalPercent);
+            setUploadFileProgress((prev) => ({ ...prev, [fileName]: filePercent }));
+          },
+        },
+      );
       message.success(
         `${selectedFiles.length} files uploaded successfully to ${selectedUploadFolder === "root" ? "root folder" : selectedUploadFolder}`,
       );
-      setIsUploadModalVisible(false);
+      setUploadedFiles(uploaded.filter((item) => item.mimeType.startsWith("image/")));
       setSelectedFiles([]);
-      setUploadPreviews([]);
-      loadMediaData(); // Reload data to show uploaded files
+      setUploadPreviews((prev) => {
+        prev.forEach((preview) => mediaApi.revokePreviewUrl(preview.preview));
+        return [];
+      });
+      setUploadFileProgress({});
+      setUploadPercent(100);
+      silentRefetchMedia();
     } catch (error: any) {
       message.error(error.message || "Failed to upload files");
     } finally {
       setUploading(false);
     }
   };
+
+  const isBulkUpload = selectedFiles.length > 1;
+  const canUseCrop = enableCrop && !isBulkUpload;
 
   const uploadProps = {
     name: "file",
@@ -501,6 +626,11 @@ const MediaLibrary: React.FC = () => {
           </Breadcrumb>
         </div>
         <Space>
+          {currentFolder !== "root" && (
+            <Button icon={<ArrowLeftOutlined />} onClick={handleNavigateBack}>
+              Назад
+            </Button>
+          )}
           <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
             Refresh
           </Button>
@@ -579,11 +709,17 @@ const MediaLibrary: React.FC = () => {
         onCancel={() => {
           setIsUploadModalVisible(false);
           setSelectedFiles([]);
-          setUploadPreviews([]);
-          // Clean up object URLs
-          uploadPreviews.forEach((preview) => {
-            mediaApi.revokePreviewUrl(preview.preview);
+          setUploadPreviews((prev) => {
+            prev.forEach((preview) => {
+              mediaApi.revokePreviewUrl(preview.preview);
+            });
+            return [];
           });
+          setUploadedFiles([]);
+          setUploadPercent(0);
+          setUploadFileProgress({});
+          setEnableCrop(true);
+          // Clean up object URLs
         }}
         confirmLoading={uploading}
         width={800}
@@ -619,7 +755,37 @@ const MediaLibrary: React.FC = () => {
           </Row>
         </div>
 
-        <ImgCrop rotationSlider>
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <Text strong>Crop before upload</Text>
+            <Switch
+              checked={canUseCrop}
+              onChange={setEnableCrop}
+              disabled={isBulkUpload}
+            />
+            {isBulkUpload && (
+              <Text type="secondary">
+                Cropping is disabled for bulk upload to speed up the flow.
+              </Text>
+            )}
+          </Space>
+        </Card>
+
+        {canUseCrop ? (
+          <ImgCrop rotationSlider>
+            <Dragger {...uploadProps}>
+              <p className="ant-upload-drag-icon">
+                <UploadOutlined style={{ fontSize: 48, color: "#1890ff" }} />
+              </p>
+              <p className="ant-upload-text">
+                Click or drag files to this area to upload
+              </p>
+              <p className="ant-upload-hint">
+                Single-file mode with optional crop before upload.
+              </p>
+            </Dragger>
+          </ImgCrop>
+        ) : (
           <Dragger {...uploadProps}>
             <p className="ant-upload-drag-icon">
               <UploadOutlined style={{ fontSize: 48, color: "#1890ff" }} />
@@ -628,11 +794,31 @@ const MediaLibrary: React.FC = () => {
               Click or drag files to this area to upload
             </p>
             <p className="ant-upload-hint">
-              Support for single or bulk upload. Images can be cropped before
-              upload.
+              Bulk mode uploads files directly without crop step.
             </p>
           </Dragger>
-        </ImgCrop>
+        )}
+
+        {uploading && (
+          <Card size="small" style={{ marginTop: 16 }}>
+            <Text strong>Uploading progress</Text>
+            <Progress percent={uploadPercent} status="active" />
+            {Object.keys(uploadFileProgress).length > 0 && (
+              <List
+                size="small"
+                dataSource={Object.entries(uploadFileProgress)}
+                renderItem={([fileName, percent]) => (
+                  <List.Item>
+                    <Space style={{ width: "100%", justifyContent: "space-between" }}>
+                      <Text ellipsis>{fileName}</Text>
+                      <Text type="secondary">{percent}%</Text>
+                    </Space>
+                  </List.Item>
+                )}
+              />
+            )}
+          </Card>
+        )}
 
         {uploadPreviews.length > 0 && (
           <div style={{ marginTop: 16 }}>
@@ -677,6 +863,55 @@ const MediaLibrary: React.FC = () => {
                       description={
                         <Text type="secondary" style={{ fontSize: 11 }}>
                           {mediaApi.formatFileSize(preview.size)}
+                        </Text>
+                      }
+                    />
+                  </Card>
+                </List.Item>
+              )}
+            />
+          </div>
+        )}
+
+        {uploadedFiles.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <Text strong>Uploaded images:</Text>
+            <List
+              style={{ marginTop: 8 }}
+              grid={{ gutter: 8, xs: 1, sm: 2, md: 3, lg: 4, xl: 4, xxl: 6 }}
+              dataSource={uploadedFiles}
+              renderItem={(item) => (
+                <List.Item>
+                  <Card
+                    size="small"
+                    cover={
+                      <div
+                        style={{
+                          height: 120,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "#f5f5f5",
+                        }}
+                      >
+                        <Image
+                          src={item.url}
+                          alt={item.name}
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            objectFit: "contain",
+                          }}
+                          preview
+                        />
+                      </div>
+                    }
+                  >
+                    <Card.Meta
+                      title={<Text ellipsis style={{ fontSize: 12 }}>{item.name}</Text>}
+                      description={
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {mediaApi.formatFileSize(item.size)}
                         </Text>
                       }
                     />

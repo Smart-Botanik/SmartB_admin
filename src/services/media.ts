@@ -30,6 +30,16 @@ export interface MediaUploadResponse {
   createdAt: string;
 }
 
+export interface UploadProgressState {
+  totalPercent: number;
+  filePercent: number;
+  fileName: string;
+}
+
+export interface UploadFilesOptions {
+  onProgress?: (progress: UploadProgressState) => void;
+}
+
 export interface MediaListResponse {
   media: MediaItem[];
   pagination: {
@@ -95,8 +105,13 @@ class MediaApiService {
   async uploadFiles(
     files: File[],
     folder?: string,
+    options?: UploadFilesOptions,
   ): Promise<MediaUploadResponse[]> {
-    const uploadPromises = files.map(async (file) => {
+    const totalBytes = files.reduce((acc, file) => acc + file.size, 0);
+    const loadedByFile = new Map<string, number>();
+
+    const uploadPromises = files.map(async (file, index) => {
+      const progressKey = `${index}:${file.name}`;
       const formData = new FormData();
       formData.append("file", file);
 
@@ -117,6 +132,28 @@ class MediaApiService {
         }>("/media/admin/media/upload", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
+          },
+          onUploadProgress: (event) => {
+            const loaded = Math.min(event.loaded, file.size);
+            loadedByFile.set(progressKey, loaded);
+
+            const totalLoaded = Array.from(loadedByFile.values()).reduce(
+              (acc, value) => acc + value,
+              0,
+            );
+
+            const filePercent = file.size
+              ? Math.min(100, Math.round((loaded / file.size) * 100))
+              : 0;
+            const totalPercent = totalBytes
+              ? Math.min(100, Math.round((totalLoaded / totalBytes) * 100))
+              : 0;
+
+            options?.onProgress?.({
+              totalPercent,
+              filePercent,
+              fileName: file.name,
+            });
           },
         });
         const raw = response.data;
