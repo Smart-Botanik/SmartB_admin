@@ -149,6 +149,75 @@ class MediaApiService {
   }
 
   /**
+   * Загрузка с серверной обрезкой/ресайзом (после клиентского crop — передать координаты в пикселях исходника).
+   * См. Nest `POST /media/admin/media/upload-with-crop` (поля cropOptions/resizeOptions как JSON-строки в FormData).
+   */
+  async uploadWithCrop(
+    file: File,
+    options: {
+      cropOptions: { x: number; y: number; width: number; height: number };
+      resizeOptions?: { width?: number; height?: number; fit?: string };
+      generateThumbnail?: boolean;
+      folder?: string;
+      entityType?: string;
+      entityId?: string;
+    },
+  ): Promise<MediaUploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (options.folder && options.folder !== "root") {
+      formData.append("folder", options.folder);
+    }
+    if (options.entityType) {
+      formData.append("entityType", options.entityType);
+    }
+    if (options.entityId) {
+      formData.append("entityId", options.entityId);
+    }
+    formData.append("cropOptions", JSON.stringify(options.cropOptions));
+    if (options.resizeOptions) {
+      formData.append("resizeOptions", JSON.stringify(options.resizeOptions));
+    }
+    if (options.generateThumbnail != null) {
+      formData.append("generateThumbnail", String(options.generateThumbnail));
+    }
+
+    try {
+      const response = await this.api.post<{
+        id: string;
+        url: string;
+        mime?: string;
+        mimeType?: string;
+        size?: number;
+        width?: number;
+        height?: number;
+        createdAt: string;
+      }>("/media/admin/media/upload-with-crop", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const raw = response.data;
+      return {
+        id: raw.id,
+        name: file.name,
+        url: raw.url,
+        size: raw.size ?? file.size,
+        mimeType:
+          (raw.mimeType ?? raw.mime ?? file.type) || "application/octet-stream",
+        width: raw.width,
+        height: raw.height,
+        createdAt:
+          typeof raw.createdAt === "string"
+            ? raw.createdAt
+            : new Date(raw.createdAt).toISOString(),
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Get media list
    */
   async getMediaList(params?: {

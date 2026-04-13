@@ -12,7 +12,7 @@ import {
   Typography,
   message,
 } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { copyToClipboard } from "@/utils/helpers";
 import { plantEventsService } from "@/services/plantEvents";
 import { actionPathRegistryService } from "@/services/actionPathRegistry";
@@ -43,6 +43,7 @@ function validatePayloadJson(payloadJson: string): string | null {
 
 const CreatePlantEventPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [form] = Form.useForm<FormValues>();
 
   const [saving, setSaving] = useState(false);
@@ -80,6 +81,14 @@ const CreatePlantEventPage: React.FC = () => {
     createdAt: string;
     updatedAt: string;
   } | null>(null);
+
+  const plantIdFromQuery = searchParams.get("plantId")?.trim() ?? "";
+
+  React.useEffect(() => {
+    if (plantIdFromQuery) {
+      form.setFieldValue("plantId", plantIdFromQuery);
+    }
+  }, [plantIdFromQuery, form]);
 
   const actionPathValue = Form.useWatch("actionPath", form);
 
