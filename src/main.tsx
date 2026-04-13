@@ -16,6 +16,22 @@ import LoginPage from "@/pages/Login";
 import MediaLibrary from "@/pages/Media";
 import ComponentDemo from "@/pages/ComponentDemo";
 import BrandsPage, { BrandCreatePage, BrandEditPage } from "@/pages/Brands";
+import ProductsPage, {
+  ProductCreatePage,
+  ProductEditPage,
+} from "@/pages/Products";
+import LocationsPage, { LocationUpdatePage } from "@/pages/Locations";
+import {
+  PlantsPage,
+  PlantCreatePage,
+  PlantEditPage,
+} from "@/pages/Plants";
+import {
+  DiariesPage,
+  DiaryCreatePage,
+  DiaryEditPage,
+} from "@/pages/Diaries";
+import { UsersListPage, UserCreatePage } from "@/pages/Users";
 import {
   EventsListPage,
   EventEditPage,
@@ -79,6 +95,11 @@ const App: React.FC = () => {
               show: "/products/show/:id",
             },
             {
+              name: "locations",
+              list: "/locations",
+              edit: "/locations/update/:id",
+            },
+            {
               name: "media",
               list: "/media",
               create: "/media/create",
@@ -131,6 +152,43 @@ const App: React.FC = () => {
                         <Route
                           path="/brands/edit/:id"
                           element={<BrandEditPage />}
+                        />
+                        <Route path="/products" element={<ProductsPage />} />
+                        <Route
+                          path="/products/create"
+                          element={<ProductCreatePage />}
+                        />
+                        <Route
+                          path="/products/edit/:id"
+                          element={<ProductEditPage />}
+                        />
+                        <Route path="/locations" element={<LocationsPage />} />
+                        <Route
+                          path="/locations/update/:id"
+                          element={<LocationUpdatePage />}
+                        />
+                        <Route path="/plants" element={<PlantsPage />} />
+                        <Route
+                          path="/plants/create"
+                          element={<PlantCreatePage />}
+                        />
+                        <Route
+                          path="/plants/edit/:id"
+                          element={<PlantEditPage />}
+                        />
+                        <Route path="/diaries" element={<DiariesPage />} />
+                        <Route
+                          path="/diaries/create"
+                          element={<DiaryCreatePage />}
+                        />
+                        <Route
+                          path="/diaries/edit/:id"
+                          element={<DiaryEditPage />}
+                        />
+                        <Route path="/users" element={<UsersListPage />} />
+                        <Route
+                          path="/users/create"
+                          element={<UserCreatePage />}
                         />
                         <Route path="/media" element={<MediaLibrary />} />
                         <Route path="/events" element={<EventsListPage />} />

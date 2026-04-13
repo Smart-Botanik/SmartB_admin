@@ -13,6 +13,7 @@ import {
   DashboardOutlined,
   UserOutlined,
   FileTextOutlined,
+  ExperimentOutlined,
   ShoppingOutlined,
   TagsOutlined,
   PictureOutlined,
@@ -96,7 +97,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     },
     {
       key: "/plants",
-      icon: <FileTextOutlined />,
+      icon: <ExperimentOutlined />,
       label: (
         <span
           onMouseDown={(event) =>
