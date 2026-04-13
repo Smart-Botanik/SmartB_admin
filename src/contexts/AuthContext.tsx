@@ -134,13 +134,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Then validate token with backend and get fresh user data
           const user = await authApi.getCurrentUser();
+          const payload = parseToken(tokens.accessToken);
+          const userWithRole: User = {
+            ...user,
+            role: user?.role ?? payload?.role,
+          };
 
           // Store fresh user data
-          localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+          localStorage.setItem(
+            STORAGE_KEYS.USER_DATA,
+            JSON.stringify(userWithRole),
+          );
 
           dispatch({
             type: "AUTH_SUCCESS",
-            payload: { user },
+            payload: { user: userWithRole },
           });
         } catch (error) {
           // Token is invalid, clear everything
@@ -194,14 +202,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error("Invalid login response: missing user data");
       }
 
+      const userWithRole: User = {
+        ...response.user,
+        role: response.user.role ?? payload.role,
+      };
+
       localStorage.setItem(
         STORAGE_KEYS.USER_DATA,
-        JSON.stringify(response.user),
+        JSON.stringify(userWithRole),
       );
 
       dispatch({
         type: "AUTH_SUCCESS",
-        payload: { user: response.user },
+        payload: { user: userWithRole },
       });
     } catch (error: any) {
       const errorMessage = error.message || "Login failed. Please try again.";
@@ -288,7 +301,8 @@ export const useAuth = (): AuthContextType => {
 // Hook to check if user has specific role
 export const useAuthRole = (requiredRole: "admin" | "user"): boolean => {
   const { user } = useAuth();
-  return user?.role === requiredRole;
+  const actual = user?.role?.toString().toLowerCase();
+  return actual === requiredRole;
 };
 
 // Hook to check if user is authenticated

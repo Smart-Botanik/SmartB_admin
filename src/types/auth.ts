@@ -6,7 +6,8 @@ export interface User {
   username?: string;
   firstName?: string;
   lastName?: string;
-  role: "admin" | "user";
+  /** С бэка: `ADMIN` | `USER` (две роли). В UI сравниваем через `useAuthRole("admin"|"user")`. */
+  role?: "ADMIN" | "USER" | "admin" | "user" | string;
   avatar?: string;
   createdAt: string;
   updatedAt: string;
