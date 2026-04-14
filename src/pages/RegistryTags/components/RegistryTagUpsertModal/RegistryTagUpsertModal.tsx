@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
-import { Form, Input, Modal, Select } from "antd";
+import { AutoComplete, ColorPicker, Form, Input, Modal, Select, Space } from "antd";
 
 import type { TagItem } from "@/services/tags";
+import { renderTagIcon, TAG_ICON_OPTIONS } from "@/pages/RegistryTags/iconRegistry";
 
 export type TagFormValues = {
   label: string;
@@ -34,6 +35,8 @@ const RegistryTagUpsertModal: React.FC<RegistryTagUpsertModalProps> = ({
   onSubmit,
 }) => {
   const [form] = Form.useForm<TagFormValues>();
+  const colorValue = Form.useWatch("color", form);
+  const iconValue = Form.useWatch("icon", form);
 
   useEffect(() => {
     if (!open) {
@@ -78,10 +81,51 @@ const RegistryTagUpsertModal: React.FC<RegistryTagUpsertModalProps> = ({
           <Input placeholder="e.g. Growth" />
         </Form.Item>
         <Form.Item name="color" label="Color">
-          <Input placeholder="e.g. #52c41a" />
+          <Space>
+            <ColorPicker
+              value={colorValue || "#1677ff"}
+              onChange={(value) => {
+                form.setFieldValue("color", value.toHexString());
+              }}
+            />
+            <Input
+              placeholder="e.g. #52c41a"
+              value={colorValue}
+              onChange={(event) =>
+                form.setFieldValue("color", event.target.value)
+              }
+              style={{ width: 150 }}
+            />
+          </Space>
         </Form.Item>
-        <Form.Item name="icon" label="Icon">
-          <Input placeholder="e.g. leaf" />
+        <Form.Item
+          name="icon"
+          label={
+            <Space size={6}>
+              <span>Icon</span>
+              <a href="/tags/icons" target="_blank" rel="noreferrer">
+                Browse icons
+              </a>
+            </Space>
+          }
+        >
+          <Space>
+            <AutoComplete
+              options={TAG_ICON_OPTIONS}
+              value={iconValue}
+              onChange={(nextValue) => form.setFieldValue("icon", nextValue)}
+              placeholder="e.g. leaf"
+              style={{ width: 220 }}
+              filterOption={(input, option) =>
+                String(option?.value ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            />
+            <span style={{ fontSize: 18, lineHeight: 1 }}>
+              {renderTagIcon(iconValue)}
+            </span>
+          </Space>
         </Form.Item>
       </Form>
     </Modal>

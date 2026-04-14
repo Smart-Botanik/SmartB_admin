@@ -8,6 +8,7 @@ import RegistryTagUpsertModal, {
   type TagFormValues,
 } from "@/pages/RegistryTags/components/RegistryTagUpsertModal";
 import RegistryTagsTable from "@/pages/RegistryTags/components/RegistryTagsTable";
+import RegistryTagEventMappingModal from "@/pages/RegistryTags/components/RegistryTagEventMappingModal";
 
 const { Title } = Typography;
 
@@ -33,6 +34,8 @@ const RegistryTagsPage: React.FC = () => {
 
   const [editingTag, setEditingTag] = useState<TagItem | null>(null);
   const [isUpsertModalOpen, setIsUpsertModalOpen] = useState(false);
+  const [mappingTag, setMappingTag] = useState<TagItem | null>(null);
+  const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
 
   const offset = useMemo(() => (page - 1) * pageSize, [page, pageSize]);
 
@@ -72,6 +75,16 @@ const RegistryTagsPage: React.FC = () => {
   const closeModal = () => {
     setIsUpsertModalOpen(false);
     setEditingTag(null);
+  };
+
+  const openMappingModal = (tag: TagItem) => {
+    setMappingTag(tag);
+    setIsMappingModalOpen(true);
+  };
+
+  const closeMappingModal = () => {
+    setIsMappingModalOpen(false);
+    setMappingTag(null);
   };
 
   const submitTag = async (values: TagFormValues) => {
@@ -198,6 +211,7 @@ const RegistryTagsPage: React.FC = () => {
           loading={loading}
           pagination={pagination}
           onEdit={openEditModal}
+          onManageMapping={openMappingModal}
           onDelete={removeTag}
         />
       </Card>
@@ -209,6 +223,12 @@ const RegistryTagsPage: React.FC = () => {
         targetTypeOptions={targetTypeOptions}
         onCancel={closeModal}
         onSubmit={submitTag}
+      />
+      <RegistryTagEventMappingModal
+        open={isMappingModalOpen}
+        tag={mappingTag}
+        onCancel={closeMappingModal}
+        onChanged={load}
       />
     </div>
   );

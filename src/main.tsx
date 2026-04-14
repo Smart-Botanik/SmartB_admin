@@ -40,7 +40,7 @@ import {
 import ActionPathRegistryPage from "@/pages/ActionPathRegistry/ActionPathRegistryPage";
 import ActionPathRegistryUpsertPage from "@/pages/ActionPathRegistry/ActionPathRegistryUpsertPage";
 import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathRegistryEditPage";
-import RegistryTagsPage from "@/pages/RegistryTags";
+import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -219,6 +219,10 @@ const App: React.FC = () => {
                         <Route
                           path="/registry-tags"
                           element={<RegistryTagsPage />}
+                        />
+                        <Route
+                          path="/tags/icons"
+                          element={<RegistryTagIconsPage />}
                         />
                         <Route
                           path="/events/edit/:id"

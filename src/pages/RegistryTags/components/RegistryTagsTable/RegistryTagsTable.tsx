@@ -3,6 +3,7 @@ import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 
 import type { TagItem } from "@/services/tags";
+import { renderTagIcon } from "@/pages/RegistryTags/iconRegistry";
 
 const { Text } = Typography;
 
@@ -11,6 +12,7 @@ type RegistryTagsTableProps = {
   loading: boolean;
   pagination: TablePaginationConfig;
   onEdit: (tag: TagItem) => void;
+  onManageMapping: (tag: TagItem) => void;
   onDelete: (id: string) => void;
 };
 
@@ -19,6 +21,7 @@ const RegistryTagsTable: React.FC<RegistryTagsTableProps> = ({
   loading,
   pagination,
   onEdit,
+  onManageMapping,
   onDelete,
 }) => {
   const columns: ColumnsType<TagItem> = useMemo(
@@ -38,21 +41,33 @@ const RegistryTagsTable: React.FC<RegistryTagsTableProps> = ({
         dataIndex: "targetType",
         key: "targetType",
         width: 140,
-        render: (value?: string | null) => value || <Text type="secondary">-</Text>,
+        render: (value?: string | null) =>
+          value || <Text type="secondary">-</Text>,
       },
       {
         title: "Category",
         dataIndex: "category",
         key: "category",
         width: 180,
-        render: (value?: string | null) => value || <Text type="secondary">-</Text>,
+        render: (value?: string | null) =>
+          value || <Text type="secondary">-</Text>,
       },
       {
         title: "Icon",
         dataIndex: "icon",
         key: "icon",
         width: 160,
-        render: (value?: string | null) => value || <Text type="secondary">-</Text>,
+        render: (value?: string | null) =>
+          value ? (
+            <Space size={8}>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>
+                {renderTagIcon(value)}
+              </span>
+              <Text code>{value}</Text>
+            </Space>
+          ) : (
+            <Text type="secondary">-</Text>
+          ),
       },
       {
         title: "Updated",
@@ -64,11 +79,14 @@ const RegistryTagsTable: React.FC<RegistryTagsTableProps> = ({
       {
         title: "Actions",
         key: "actions",
-        width: 180,
+        width: 260,
         render: (_, record) => (
           <Space>
             <Button size="small" onClick={() => onEdit(record)}>
               Edit
+            </Button>
+            <Button size="small" onClick={() => onManageMapping(record)}>
+              Mapping
             </Button>
             <Popconfirm
               title="Delete tag?"
@@ -85,7 +103,7 @@ const RegistryTagsTable: React.FC<RegistryTagsTableProps> = ({
         ),
       },
     ],
-    [onDelete, onEdit],
+    [onDelete, onEdit, onManageMapping],
   );
 
   return (
