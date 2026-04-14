@@ -111,6 +111,10 @@ const App: React.FC = () => {
               list: "/events",
               edit: "/events/edit/:id",
             },
+            {
+              name: "tags",
+              list: "/tags",
+            },
           ]}
           options={{
             syncWithLocation: true,
@@ -207,6 +211,10 @@ const App: React.FC = () => {
                         <Route
                           path="/registry/edit/:actionPath"
                           element={<ActionPathRegistryEditPage />}
+                        />
+                        <Route
+                          path="/tags"
+                          element={<RegistryTagsPage />}
                         />
                         <Route
                           path="/registry-tags"

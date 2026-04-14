@@ -1,0 +1,130 @@
+.admin-layout-sider.ant-layout-sider {
+  position: relative;
+}
+
+.admin-layout-menu-controls {
+  padding: 0 14px 8px;
+}
+
+.admin-layout-menu-controls .ant-checkbox-wrapper {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+}
+
+.admin-layout-menu.ant-menu-dark {
+  background: transparent;
+}
+
+.admin-layout-menu.ant-menu-inline .ant-menu-submenu {
+  margin: 10px 8px;
+  padding: 2px 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.admin-layout-menu.ant-menu-inline .ant-menu-submenu-title {
+  margin: 0;
+  height: auto;
+  line-height: normal;
+  padding: 8px 8px 6px !important;
+}
+
+.admin-layout-sider.ant-layout-sider-collapsed .admin-layout-menu-controls {
+  display: none;
+}
+
+.admin-layout-sider.ant-layout-sider-collapsed .admin-layout-menu.ant-menu-inline .ant-menu-submenu {
+  margin: 8px 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-layout-sider.ant-layout-sider-collapsed
+  .admin-layout-menu.ant-menu-inline
+  .ant-menu-submenu-title {
+  padding: 0 !important;
+  height: 36px;
+  line-height: 36px;
+}
+
+.admin-layout-sider.ant-layout-sider-collapsed .admin-layout-section-title span {
+  display: none;
+}
+
+.admin-layout-sider.ant-layout-sider-collapsed .admin-layout-section-toggle {
+  display: none;
+}
+
+.admin-layout-sider.ant-layout-sider-collapsed
+  .admin-layout-menu.ant-menu-inline
+  .ant-menu-submenu-arrow {
+  display: none;
+}
+
+.admin-layout-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.admin-layout-section-toggle.ant-btn-text {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.admin-layout-section-toggle.ant-btn-text:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+.admin-layout-menu.ant-menu-inline .ant-menu-sub .ant-menu-item {
+  margin: 4px 0;
+  border-radius: 8px;
+  height: 30px;
+  line-height: 30px;
+  padding-inline: 10px !important;
+  font-size: 12px;
+}
+
+.admin-layout-menu.ant-menu-dark .ant-menu-item-selected {
+  background: linear-gradient(
+    90deg,
+    rgba(24, 144, 255, 0.45),
+    rgba(24, 144, 255, 0.2)
+  );
+}
+
+.admin-layout-menu.ant-menu-dark .ant-menu-item::after {
+  border-right: none;
+}
+
+.admin-layout-menu.ant-menu-inline .ant-menu-item .ant-menu-item-icon,
+.admin-layout-menu.ant-menu-inline .ant-menu-submenu-title .ant-menu-item-icon {
+  font-size: 13px;
+}
+
+.admin-layout-sider-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 20;
+}
+
+.admin-layout-sider-resize-handle:hover {
+  background: rgba(24, 144, 255, 0.25);
+}
+
+body.admin-layout-sidebar-resizing {
+  cursor: col-resize !important;
+  user-select: none;
+}
