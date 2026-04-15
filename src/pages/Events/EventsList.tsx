@@ -31,6 +31,65 @@ type RegistryListResponse = Awaited<
   ReturnType<typeof actionPathRegistryService.list>
 >;
 type EventDefinition = RegistryListResponse["items"][number];
+const PLANT_CREATED_ACTION_PATH = "common.plant.created";
+
+function toPayloadRecord(payload: unknown): Record<string, unknown> | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  return payload as Record<string, unknown>;
+}
+
+const RuntimeHistoryFeedItem: React.FC<{ event: ActionPathEvent }> = ({ event }) => {
+  const payload = toPayloadRecord(event.payload);
+
+  if (event.actionPath === PLANT_CREATED_ACTION_PATH) {
+    const fields = payload
+      ? Object.entries(payload).filter(([, value]) => value !== null && value !== "")
+      : [];
+
+    return (
+      <Card size="small" style={{ borderRadius: 10 }}>
+        <Space direction="vertical" size={4}>
+          <Text strong>Created Plant</Text>
+          <Text>
+            Растение создано, стартовые характеристики зафиксированы в истории.
+          </Text>
+          {fields.length > 0 ? (
+            <Space wrap>
+              {fields.map(([key, value]) => (
+                <Tag key={key}>
+                  {key}:{" "}
+                  {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                </Tag>
+              ))}
+            </Space>
+          ) : (
+            <Text type="secondary">Стартовые поля не переданы.</Text>
+          )}
+        </Space>
+      </Card>
+    );
+  }
+
+  return (
+    <Card size="small" style={{ borderRadius: 10 }}>
+      <Space direction="vertical" size={4} style={{ width: "100%" }}>
+        <Text strong>{event.actionPath}</Text>
+        <pre
+          style={{
+            margin: 0,
+            maxWidth: 520,
+            maxHeight: 120,
+            overflow: "auto",
+          }}
+        >
+          {JSON.stringify(event.payload, null, 2)}
+        </pre>
+      </Space>
+    </Card>
+  );
+};
 
 const EventsListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -287,7 +346,11 @@ const EventsListPage: React.FC = () => {
         width: 280,
         render: (_, record) => (
           <Space>
-            <Button onClick={() => navigate(`/registry/edit/${record.actionPath}`)}>
+            <Button
+              onClick={() =>
+                navigate(`/events/definitions/edit/${record.actionPath}`)
+              }
+            >
               Edit definition
             </Button>
             <Button onClick={() => void openMappingModal(record)}>Map tag</Button>
@@ -331,21 +394,9 @@ const EventsListPage: React.FC = () => {
         ),
       },
       {
-        title: "Payload",
-        dataIndex: "payload",
+        title: "History feed item",
         key: "payload",
-        render: (value: unknown) => (
-          <pre
-            style={{
-              margin: 0,
-              maxWidth: 520,
-              maxHeight: 120,
-              overflow: "auto",
-            }}
-          >
-            {JSON.stringify(value, null, 2)}
-          </pre>
-        ),
+        render: (_, record) => <RuntimeHistoryFeedItem event={record} />,
       },
     ],
     [],
@@ -366,7 +417,7 @@ const EventsListPage: React.FC = () => {
         <Space>
           {mode === "definitions" ? (
             <>
-              <Button onClick={() => navigate("/registry/new")}>
+              <Button onClick={() => navigate("/events/definitions/new")}>
                 Create definition
               </Button>
               <Button

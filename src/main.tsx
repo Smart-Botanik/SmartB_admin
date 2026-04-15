@@ -201,6 +201,14 @@ const App: React.FC = () => {
                           element={<CreatePlantEventPage />}
                         />
                         <Route
+                          path="/events/definitions/new"
+                          element={<ActionPathRegistryUpsertPage />}
+                        />
+                        <Route
+                          path="/events/definitions/edit/:actionPath"
+                          element={<ActionPathRegistryEditPage />}
+                        />
+                        <Route
                           path="/registry"
                           element={<ActionPathRegistryPage />}
                         />
