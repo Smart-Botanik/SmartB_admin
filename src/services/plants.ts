@@ -11,6 +11,7 @@ export interface PlantListItem {
   current?: unknown;
   locationId?: string | null;
   location?: PlantLocationSummary | null;
+  diaryId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +26,7 @@ function plantFieldsGql() {
       id
       name
     }
+    diaryId
     createdAt
     updatedAt
   `;
@@ -97,7 +99,10 @@ export const plantsService = {
     return resp.createPlant;
   },
 
-  update: async (id: string, input: { name?: string }) => {
+  update: async (
+    id: string,
+    input: { name?: string; diaryId?: string | null },
+  ) => {
     const query = `
       mutation UpdatePlant($id: ID!, $input: UpdatePlantInput!) {
         updatePlant(id: $id, input: $input) {
@@ -106,14 +111,22 @@ export const plantsService = {
       }
     `;
 
+    const payload: { name?: string; diaryId?: string | null } = {};
+    if (input.name !== undefined) {
+      payload.name = input.name.trim();
+    }
+    if (input.diaryId !== undefined) {
+      payload.diaryId = input.diaryId;
+    }
+
     const resp = await graphqlClient.request<
       { updatePlant: PlantListItem },
-      { id: string; input: { name?: string } }
+      { id: string; input: typeof payload }
     >({
       query,
       variables: {
         id,
-        input: input.name !== undefined ? { name: input.name.trim() } : {},
+        input: payload,
       },
       operationName: "UpdatePlant",
     });

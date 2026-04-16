@@ -70,6 +70,20 @@ const PlantsPage: React.FC = () => {
         render: (_, r) => r.location?.name ?? "—",
       },
       {
+        title: "Дневник",
+        key: "diaryId",
+        width: 140,
+        ellipsis: true,
+        render: (_, r) =>
+          r.diaryId ? (
+            <Link to={`/diaries/edit/${r.diaryId}`} title={r.diaryId}>
+              Открыть
+            </Link>
+          ) : (
+            "—"
+          ),
+      },
+      {
         title: "Текущее состояние",
         key: "current",
         ellipsis: true,

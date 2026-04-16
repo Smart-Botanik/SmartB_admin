@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
   Card,
   Form,
   Input,
+  Select,
   Space,
   Spin,
   Typography,
@@ -12,6 +13,7 @@ import {
 } from "antd";
 
 import { diariesService, type DiaryPlantSummary } from "@/services/diaries";
+import { plantsService, type PlantListItem } from "@/services/plants";
 
 const { Title, Text } = Typography;
 
@@ -27,6 +29,9 @@ const DiaryEditPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [linkedPlants, setLinkedPlants] = useState<DiaryPlantSummary[]>([]);
+  const [plantsCatalog, setPlantsCatalog] = useState<PlantListItem[]>([]);
+  const [selectedPlantIds, setSelectedPlantIds] = useState<string[]>([]);
+  const [linkSaving, setLinkSaving] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -39,7 +44,10 @@ const DiaryEditPage: React.FC = () => {
     (async () => {
       setLoading(true);
       try {
-        const diary = await diariesService.getById(id);
+        const [diary, plants] = await Promise.all([
+          diariesService.getById(id),
+          plantsService.list({ limit: 500, offset: 0 }),
+        ]);
         if (cancelled) return;
         if (!diary) {
           message.error("Дневник не найден");
@@ -50,7 +58,10 @@ const DiaryEditPage: React.FC = () => {
           title: diary.title ?? "",
           body: diary.body ?? "",
         });
-        setLinkedPlants(diary.plants ?? []);
+        const linked = diary.plants ?? [];
+        setLinkedPlants(linked);
+        setSelectedPlantIds(linked.map((p) => p.id));
+        setPlantsCatalog(plants);
       } catch (e: unknown) {
         if (cancelled) return;
         const msg =
@@ -67,6 +78,37 @@ const DiaryEditPage: React.FC = () => {
     };
   }, [id, form, navigate]);
 
+  const savePlantLinks = useCallback(async () => {
+    if (!id) return;
+    const prev = new Set(linkedPlants.map((p) => p.id));
+    const next = new Set(selectedPlantIds);
+    setLinkSaving(true);
+    try {
+      for (const pid of prev) {
+        if (!next.has(pid)) {
+          await plantsService.update(pid, { diaryId: null });
+        }
+      }
+      for (const pid of next) {
+        if (!prev.has(pid)) {
+          await plantsService.update(pid, { diaryId: id });
+        }
+      }
+      const diary = await diariesService.getById(id);
+      const linked = diary?.plants ?? [];
+      setLinkedPlants(linked);
+      setSelectedPlantIds(linked.map((p) => p.id));
+      setPlantsCatalog(await plantsService.list({ limit: 500, offset: 0 }));
+      message.success("Связи растений обновлены");
+    } catch (e: unknown) {
+      const msg =
+        e instanceof Error ? e.message : "Не удалось сохранить связи растений";
+      message.error(msg);
+    } finally {
+      setLinkSaving(false);
+    }
+  }, [id, linkedPlants, selectedPlantIds]);
+
   const onFinish = async (values: FormValues) => {
     if (!id) return;
     const body = values.body?.trim() ?? "";
@@ -80,7 +122,9 @@ const DiaryEditPage: React.FC = () => {
         body,
         title: values.title?.trim() || null,
       });
-      setLinkedPlants(updated.plants ?? []);
+      const linked = updated.plants ?? [];
+      setLinkedPlants(linked);
+      setSelectedPlantIds(linked.map((p) => p.id));
       message.success("Сохранено");
     } catch (e: unknown) {
       const msg =
@@ -144,20 +188,36 @@ const DiaryEditPage: React.FC = () => {
       </Card>
 
       <Card title="Связанные растения">
-        {linkedPlants.length ? (
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            {linkedPlants.map((p) => (
-              <li key={p.id}>
-                <Text>{p.name}</Text>
-              </li>
-            ))}
-          </ul>
-        ) : (
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
           <Text type="secondary">
-            Пока нет привязанных растений. Редактирование связи — в задаче
-            FR-7.5.DIARIES-4 (основное приложение / бэкенд).
+            Выберите растения текущего пользователя. Уже привязанные к другому
+            дневнику можно перенести сюда — при сохранении они отвяжутся от
+            прошлого дневника.
           </Text>
-        )}
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="Растения дневника"
+            style={{ width: "100%" }}
+            value={selectedPlantIds}
+            onChange={(vals) => setSelectedPlantIds(vals)}
+            options={plantsCatalog.map((p) => ({
+              value: p.id,
+              label:
+                p.diaryId && p.diaryId !== id
+                  ? `${p.name} (сейчас в другом дневнике)`
+                  : p.name,
+            }))}
+            optionFilterProp="label"
+          />
+          <Button
+            type="primary"
+            loading={linkSaving}
+            onClick={() => void savePlantLinks()}
+          >
+            Сохранить связи растений
+          </Button>
+        </Space>
       </Card>
     </Space>
   );
