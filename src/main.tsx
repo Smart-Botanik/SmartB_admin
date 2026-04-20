@@ -41,6 +41,7 @@ import ActionPathRegistryPage from "@/pages/ActionPathRegistry/ActionPathRegistr
 import ActionPathRegistryUpsertPage from "@/pages/ActionPathRegistry/ActionPathRegistryUpsertPage";
 import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathRegistryEditPage";
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
+import PrimitivesPage from "@/pages/Primitives/PrimitivesPage";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -114,6 +115,10 @@ const App: React.FC = () => {
             {
               name: "tags",
               list: "/tags",
+            },
+            {
+              name: "primitives",
+              list: "/primitives",
             },
           ]}
           options={{
@@ -232,6 +237,7 @@ const App: React.FC = () => {
                           path="/tags/icons"
                           element={<RegistryTagIconsPage />}
                         />
+                        <Route path="/primitives" element={<PrimitivesPage />} />
                         <Route
                           path="/events/edit/:id"
                           element={<EventEditPage />}

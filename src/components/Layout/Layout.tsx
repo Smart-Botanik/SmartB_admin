@@ -364,6 +364,11 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           icon: <SettingOutlined />,
           label: createMenuItemLabel("Action Path Registry", "/registry"),
         },
+        {
+          key: "/primitives",
+          icon: <DatabaseOutlined />,
+          label: createMenuItemLabel("Primitives", "/primitives"),
+        },
       ],
     },
   ];
@@ -395,6 +400,9 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     }
     if (location.pathname.startsWith("/tags")) {
       return "/tags";
+    }
+    if (location.pathname.startsWith("/primitives")) {
+      return "/primitives";
     }
     if (location.pathname.startsWith("/users")) {
       return "/users";
