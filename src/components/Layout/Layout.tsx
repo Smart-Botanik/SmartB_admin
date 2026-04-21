@@ -350,10 +350,18 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     },
     {
       key: "admin-section",
-      title: "Admin Section",
+      title: "Projection/Stream Registry",
       menuKey: "section-admin-section",
       icon: <ToolOutlined />,
       items: [
+        {
+          key: "/projection-stream-registry",
+          icon: <DeploymentUnitOutlined />,
+          label: createMenuItemLabel(
+            "Projection/Stream Hub",
+            "/projection-stream-registry",
+          ),
+        },
         {
           key: "/tags",
           icon: <TagsOutlined />,
@@ -403,6 +411,9 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     }
     if (location.pathname.startsWith("/primitives")) {
       return "/primitives";
+    }
+    if (location.pathname.startsWith("/projection-stream-registry")) {
+      return "/projection-stream-registry";
     }
     if (location.pathname.startsWith("/users")) {
       return "/users";

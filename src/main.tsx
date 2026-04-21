@@ -42,6 +42,7 @@ import ActionPathRegistryUpsertPage from "@/pages/ActionPathRegistry/ActionPathR
 import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathRegistryEditPage";
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import PrimitivesPage from "@/pages/Primitives/PrimitivesPage";
+import ProjectionStreamRegistryHubPage from "@/pages/ProjectionStreamRegistry/ProjectionStreamRegistryHubPage";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -119,6 +120,10 @@ const App: React.FC = () => {
             {
               name: "primitives",
               list: "/primitives",
+            },
+            {
+              name: "projection-stream-registry",
+              list: "/projection-stream-registry",
             },
           ]}
           options={{
@@ -238,6 +243,10 @@ const App: React.FC = () => {
                           element={<RegistryTagIconsPage />}
                         />
                         <Route path="/primitives" element={<PrimitivesPage />} />
+                        <Route
+                          path="/projection-stream-registry"
+                          element={<ProjectionStreamRegistryHubPage />}
+                        />
                         <Route
                           path="/events/edit/:id"
                           element={<EventEditPage />}
