@@ -27,6 +27,15 @@ const ProjectionStreamRegistryHubPage: React.FC = () => {
         style={{ marginBottom: 16 }}
       />
 
+      <Card title="Readiness Gates" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Tag color="green">Backend: PR-1 schema + seed ready</Tag>
+          <Tag color="gold">Backend: PR-2 API in progress</Tag>
+          <Tag color="gold">Admin: FieldSpec catalog in progress</Tag>
+          <Tag color="blue">FrontendApp start gate: C2 + A3</Tag>
+        </Space>
+      </Card>
+
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>
           <Card
@@ -112,6 +121,20 @@ const ProjectionStreamRegistryHubPage: React.FC = () => {
               Create Draft Profile
             </Button>
           </Space>
+        </Space>
+      </Card>
+
+      <Card title="Glossary (v1)" style={{ marginTop: 16 }}>
+        <Space direction="vertical" size={6}>
+          <Text>
+            - <strong>FieldSpec</strong>: field contract definition (replaces legacy "primitive" wording
+            for new registry flow).
+          </Text>
+          <Text>- <strong>valueType</strong>: technical data type (number/string/boolean/date/enum/json).</Text>
+          <Text>- <strong>semanticKind</strong>: domain meaning (ph/ppm/temperature/generic).</Text>
+          <Text>- <strong>format</strong>: input behavior (decimal/integer, precision, step).</Text>
+          <Text>- <strong>constraints</strong>: validation rules (required, min, max, enum values).</Text>
+          <Text>- <strong>canonicalPath</strong>: path used for v1 payload assembly.</Text>
         </Space>
       </Card>
     </div>
