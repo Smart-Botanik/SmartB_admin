@@ -363,6 +363,14 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           ),
         },
         {
+          key: "/projection-stream-registry/profiles",
+          icon: <SettingOutlined />,
+          label: createMenuItemLabel(
+            "Profile Builder v1",
+            "/projection-stream-registry/profiles",
+          ),
+        },
+        {
           key: "/tags",
           icon: <TagsOutlined />,
           label: createMenuItemLabel("Registry Tags", "/tags"),
@@ -411,6 +419,9 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     }
     if (location.pathname.startsWith("/primitives")) {
       return "/primitives";
+    }
+    if (location.pathname.startsWith("/projection-stream-registry/profiles")) {
+      return "/projection-stream-registry/profiles";
     }
     if (location.pathname.startsWith("/projection-stream-registry")) {
       return "/projection-stream-registry";

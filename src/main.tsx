@@ -43,6 +43,7 @@ import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathReg
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import PrimitivesPage from "@/pages/Primitives/PrimitivesPage";
 import ProjectionStreamRegistryHubPage from "@/pages/ProjectionStreamRegistry/ProjectionStreamRegistryHubPage";
+import RegistryProfileBuilderPage from "@/pages/ProjectionStreamRegistry/RegistryProfileBuilderPage";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
 import { envConfig } from "@/config/env";
 
@@ -124,6 +125,10 @@ const App: React.FC = () => {
             {
               name: "projection-stream-registry",
               list: "/projection-stream-registry",
+            },
+            {
+              name: "projection-stream-registry-profiles",
+              list: "/projection-stream-registry/profiles",
             },
           ]}
           options={{
@@ -246,6 +251,10 @@ const App: React.FC = () => {
                         <Route
                           path="/projection-stream-registry"
                           element={<ProjectionStreamRegistryHubPage />}
+                        />
+                        <Route
+                          path="/projection-stream-registry/profiles"
+                          element={<RegistryProfileBuilderPage />}
                         />
                         <Route
                           path="/events/edit/:id"

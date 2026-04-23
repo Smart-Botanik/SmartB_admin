@@ -1,11 +1,50 @@
-import React from "react";
-import { Alert, Button, Card, Col, Row, Space, Tag, Typography } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Button, Card, Col, Row, Space, Table, Tag, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
+import type { ColumnsType } from "antd/es/table";
+import { registryFieldSpecsService, type RegistryFieldSpec } from "@/services/registryFieldSpecs";
+import { registryProfilesService, type RegistryProfile } from "@/services/registryProfiles";
 
 const { Title, Paragraph, Text } = Typography;
 
 const ProjectionStreamRegistryHubPage: React.FC = () => {
   const navigate = useNavigate();
+  const [fieldSpecs, setFieldSpecs] = useState<RegistryFieldSpec[]>([]);
+  const [profiles, setProfiles] = useState<RegistryProfile[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [nextSpecs, nextProfiles] = await Promise.all([
+          registryFieldSpecsService.list({ entity: "Plant" }),
+          registryProfilesService.list({ entity: "Plant", isActive: true }),
+        ]);
+        setFieldSpecs(nextSpecs);
+        setProfiles(nextProfiles);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const profileColumns: ColumnsType<RegistryProfile> = useMemo(
+    () => [
+      { title: "Key", dataIndex: "key", key: "key" },
+      { title: "Kind", dataIndex: "kind", key: "kind", width: 160 },
+      { title: "Fields", key: "fields", width: 90, render: (_, p) => p.fields.length },
+      {
+        title: "Status",
+        key: "isActive",
+        width: 100,
+        render: (_, p) => (p.isActive ? <Tag color="green">active</Tag> : <Tag>inactive</Tag>),
+      },
+    ],
+    []
+  );
 
   return (
     <div style={{ padding: 24 }}>
@@ -31,8 +70,26 @@ const ProjectionStreamRegistryHubPage: React.FC = () => {
         <Space wrap>
           <Tag color="green">Backend: PR-1 schema + seed ready</Tag>
           <Tag color="gold">Backend: PR-2 API in progress</Tag>
-          <Tag color="gold">Admin: FieldSpec catalog in progress</Tag>
+          <Tag color={fieldSpecs.length > 0 ? "green" : "gold"}>
+            Admin: FieldSpec catalog {fieldSpecs.length > 0 ? "connected" : "in progress"}
+          </Tag>
           <Tag color="blue">FrontendApp start gate: C2 + A3</Tag>
+        </Space>
+      </Card>
+
+      <Card title="Live Registry Snapshot" style={{ marginBottom: 16 }}>
+        <Space direction="vertical" size={8} style={{ width: "100%" }}>
+          <Typography.Text type="secondary">
+            Connected FieldSpecs: {fieldSpecs.length} | Active Profiles: {profiles.length}
+          </Typography.Text>
+          <Table<RegistryProfile>
+            size="small"
+            rowKey="id"
+            loading={loading}
+            dataSource={profiles}
+            columns={profileColumns}
+            pagination={false}
+          />
         </Space>
       </Card>
 
@@ -42,8 +99,8 @@ const ProjectionStreamRegistryHubPage: React.FC = () => {
             title="Registry Profiles"
             extra={<Tag color="blue">core</Tag>}
             actions={[
-              <Button type="link" onClick={() => navigate("/registry")}>
-                Open Registry
+              <Button type="link" onClick={() => navigate("/projection-stream-registry/profiles")}>
+                Open Profile Builder
               </Button>,
             ]}
           >
