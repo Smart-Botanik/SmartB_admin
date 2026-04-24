@@ -385,6 +385,11 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           icon: <DatabaseOutlined />,
           label: createMenuItemLabel("Primitives", "/primitives"),
         },
+        {
+          key: "/field-patterns",
+          icon: <DatabaseOutlined />,
+          label: createMenuItemLabel("Field Patterns", "/field-patterns"),
+        },
       ],
     },
   ];
@@ -419,6 +424,9 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     }
     if (location.pathname.startsWith("/primitives")) {
       return "/primitives";
+    }
+    if (location.pathname.startsWith("/field-patterns")) {
+      return "/field-patterns";
     }
     if (location.pathname.startsWith("/projection-stream-registry/profiles")) {
       return "/projection-stream-registry/profiles";

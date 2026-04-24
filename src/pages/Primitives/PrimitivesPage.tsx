@@ -21,12 +21,20 @@ import {
   RegistryValueType,
   registryFieldSpecsService,
 } from "@/services/registryFieldSpecs";
+import { fieldPatternsService, type FieldPattern } from "@/services/fieldPatterns";
 
-const { Title } = Typography;
+const { Title, Text, Link } = Typography;
+
+const ENTITY_OPTIONS = [
+  { value: "Plant", label: "Plant" },
+  { value: "Diary", label: "Diary" },
+  { value: "Location", label: "Location" },
+] as const;
 
 type FieldSpecFormValues = {
   fieldId: string;
   entity: string;
+  fieldPatternKey?: string;
   label: string;
   valueType: RegistryValueType;
   semanticKind: RegistrySemanticKind;
@@ -48,7 +56,9 @@ const FieldSpecStatusTag: React.FC<{ status: RegistryFieldSpecStatus }> = ({ sta
 
 const PrimitivesPage: React.FC = () => {
   const [items, setItems] = useState<RegistryFieldSpec[]>([]);
+  const [patterns, setPatterns] = useState<FieldPattern[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<string>("Plant");
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
@@ -56,10 +66,10 @@ const PrimitivesPage: React.FC = () => {
 
   const isEditing = Boolean(editingFieldId);
 
-  const load = async () => {
+  const load = async (entity: string) => {
     setLoading(true);
     try {
-      const next = await registryFieldSpecsService.list({ entity: "Plant" });
+      const next = await registryFieldSpecsService.list({ entity });
       setItems(next);
     } catch (error: any) {
       message.error(error?.message ?? "Failed to load field specs");
@@ -69,12 +79,19 @@ const PrimitivesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    load();
+    load(selectedEntity);
+  }, [selectedEntity]);
+
+  useEffect(() => {
+    fieldPatternsService.list().then(setPatterns).catch(() => {
+      message.error("Failed to load field patterns");
+    });
   }, []);
 
   const columns: ColumnsType<RegistryFieldSpec> = useMemo(
     () => [
       { title: "Field ID", dataIndex: "fieldId", key: "fieldId", width: 220 },
+      { title: "Entity", dataIndex: "entity", key: "entity", width: 100 },
       { title: "Label", dataIndex: "label", key: "label", width: 180 },
       { title: "Value Type", dataIndex: "valueType", key: "valueType", width: 120 },
       { title: "Semantic", dataIndex: "semanticKind", key: "semanticKind", width: 120 },
@@ -107,6 +124,7 @@ const PrimitivesPage: React.FC = () => {
               form.setFieldsValue({
                 fieldId: record.fieldId,
                 entity: record.entity,
+                fieldPatternKey: undefined,
                 label: record.label,
                 valueType: record.valueType,
                 semanticKind: record.semanticKind,
@@ -135,7 +153,8 @@ const PrimitivesPage: React.FC = () => {
     setEditingFieldId(null);
     form.resetFields();
     form.setFieldsValue({
-      entity: "Plant",
+      entity: selectedEntity,
+      fieldPatternKey: undefined,
       semanticKind: "generic",
       valueType: "number",
       status: "active",
@@ -192,7 +211,7 @@ const PrimitivesPage: React.FC = () => {
         message.success("Field spec created");
       }
       closeModal();
-      await load();
+      await load(selectedEntity);
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(error?.message ?? "Failed to save field spec");
@@ -204,17 +223,26 @@ const PrimitivesPage: React.FC = () => {
   return (
     <div style={{ padding: 24 }}>
       <Title level={3} style={{ marginTop: 0 }}>
-        Field Specs (Projection/Stream v1)
+        Field Specs (Projection/Stream v1) - {selectedEntity}
       </Title>
 
       <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>
+        <Select
+          style={{ minWidth: 180 }}
+          value={selectedEntity}
+          options={[...ENTITY_OPTIONS]}
+          onChange={value => setSelectedEntity(value)}
+        />
+        <Button icon={<ReloadOutlined />} onClick={() => load(selectedEntity)} loading={loading}>
           Refresh
         </Button>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
           Add Field Spec
         </Button>
       </Space>
+      <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+        Configure reusable rules in <Link href="/field-patterns">Field Patterns</Link> before creating Field Specs.
+      </Text>
 
       <Table rowKey="id" loading={loading} dataSource={items} columns={columns} />
 
@@ -246,8 +274,35 @@ const PrimitivesPage: React.FC = () => {
             label="Entity"
             rules={[{ required: true, message: "Entity is required" }]}
           >
-            <Select options={[{ value: "Plant", label: "Plant" }]} />
+            <Select options={[...ENTITY_OPTIONS]} />
           </Form.Item>
+
+          <Form.Item name="fieldPatternKey" label="Field Pattern">
+            <Select
+              allowClear
+              placeholder="Optional reusable pattern"
+              options={patterns.map(pattern => ({
+                value: pattern.key,
+                label: `${pattern.title} (${pattern.key})`,
+              }))}
+              onChange={value => {
+                const pattern = patterns.find(item => item.key === value);
+                if (!pattern) {
+                  return;
+                }
+                form.setFieldsValue({
+                  valueType: pattern.valueType,
+                  semanticKind: pattern.semanticKind,
+                  unit: pattern.unit ?? "",
+                  formatJson: pattern.formatJson ?? "",
+                  constraintsJson: pattern.constraintsJson ?? "",
+                });
+              }}
+            />
+          </Form.Item>
+          <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+            Field Pattern переиспользует доменные правила (pH/ppm/temperature) без дублирования JSON.
+          </Text>
 
           <Form.Item
             name="label"
