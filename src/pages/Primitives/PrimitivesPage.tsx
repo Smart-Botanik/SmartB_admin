@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Button,
   Checkbox,
   Form,
@@ -54,7 +55,7 @@ const FieldSpecStatusTag: React.FC<{ status: RegistryFieldSpecStatus }> = ({ sta
   return <Tag color="green">active</Tag>;
 };
 
-const PrimitivesPage: React.FC = () => {
+const FieldSpecsPage: React.FC = () => {
   const [items, setItems] = useState<RegistryFieldSpec[]>([]);
   const [patterns, setPatterns] = useState<FieldPattern[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,6 +66,11 @@ const PrimitivesPage: React.FC = () => {
   const [form] = Form.useForm<FieldSpecFormValues>();
 
   const isEditing = Boolean(editingFieldId);
+  const selectedPatternKey = Form.useWatch("fieldPatternKey", form);
+  const selectedPattern = useMemo(
+    () => patterns.find(pattern => pattern.key === selectedPatternKey) ?? null,
+    [patterns, selectedPatternKey],
+  );
 
   const load = async (entity: string) => {
     setLoading(true);
@@ -95,6 +101,7 @@ const PrimitivesPage: React.FC = () => {
       { title: "Label", dataIndex: "label", key: "label", width: 180 },
       { title: "Value Type", dataIndex: "valueType", key: "valueType", width: 120 },
       { title: "Semantic", dataIndex: "semanticKind", key: "semanticKind", width: 120 },
+      { title: "Pattern", dataIndex: "fieldPatternKey", key: "fieldPatternKey", width: 190 },
       { title: "Canonical Path", dataIndex: "canonicalPath", key: "canonicalPath", width: 160 },
       { title: "Unit", dataIndex: "unit", key: "unit", width: 120 },
       {
@@ -124,7 +131,7 @@ const PrimitivesPage: React.FC = () => {
               form.setFieldsValue({
                 fieldId: record.fieldId,
                 entity: record.entity,
-                fieldPatternKey: undefined,
+                fieldPatternKey: record.fieldPatternKey ?? undefined,
                 label: record.label,
                 valueType: record.valueType,
                 semanticKind: record.semanticKind,
@@ -186,6 +193,7 @@ const PrimitivesPage: React.FC = () => {
           semanticKind: values.semanticKind,
           canonicalPath: values.canonicalPath,
           unit: values.unit?.trim() || undefined,
+          fieldPatternKey: values.fieldPatternKey,
           status: values.status,
           includeInCurrent: values.includeInCurrent,
           required: values.required,
@@ -202,6 +210,7 @@ const PrimitivesPage: React.FC = () => {
           semanticKind: values.semanticKind,
           canonicalPath: values.canonicalPath,
           unit: values.unit?.trim() || undefined,
+          fieldPatternKey: values.fieldPatternKey,
           status: values.status,
           includeInCurrent: values.includeInCurrent,
           required: values.required,
@@ -293,7 +302,7 @@ const PrimitivesPage: React.FC = () => {
                 form.setFieldsValue({
                   valueType: pattern.valueType,
                   semanticKind: pattern.semanticKind,
-                  unit: pattern.unit ?? "",
+                  unit: pattern.canonicalUnit ?? "",
                   formatJson: pattern.formatJson ?? "",
                   constraintsJson: pattern.constraintsJson ?? "",
                 });
@@ -303,6 +312,15 @@ const PrimitivesPage: React.FC = () => {
           <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
             Field Pattern переиспользует доменные правила (pH/ppm/temperature) без дублирования JSON.
           </Text>
+          {selectedPattern?.allowedUnits?.length ? (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={`Unit options: ${selectedPattern.allowedUnits.join(", ")}`}
+              description={`Storage/canonical unit: ${selectedPattern.canonicalUnit ?? "not set"}. Default input unit: ${selectedPattern.defaultInputUnit ?? "not set"}.`}
+            />
+          ) : null}
 
           <Form.Item
             name="label"
@@ -336,6 +354,8 @@ const PrimitivesPage: React.FC = () => {
                 { value: "ph", label: "ph" },
                 { value: "ppm", label: "ppm" },
                 { value: "temperature", label: "temperature" },
+                { value: "length", label: "length" },
+                { value: "concentration", label: "concentration" },
               ]}
             />
           </Form.Item>
@@ -354,8 +374,21 @@ const PrimitivesPage: React.FC = () => {
             <Input placeholder="e.g. solution.ph" />
           </Form.Item>
 
-          <Form.Item name="unit" label="Unit">
-            <Input placeholder="e.g. ppm" />
+          <Form.Item
+            name="unit"
+            label={selectedPattern?.allowedUnits?.length ? "Canonical Unit" : "Unit"}
+          >
+            {selectedPattern?.allowedUnits?.length ? (
+              <Select
+                disabled
+                options={selectedPattern.allowedUnits.map(unit => ({
+                  value: unit,
+                  label: unit,
+                }))}
+              />
+            ) : (
+              <Input placeholder="e.g. ppm" />
+            )}
           </Form.Item>
 
           <Form.Item name="required" valuePropName="checked">
@@ -414,4 +447,4 @@ const PrimitivesPage: React.FC = () => {
   );
 };
 
-export default PrimitivesPage;
+export default FieldSpecsPage;

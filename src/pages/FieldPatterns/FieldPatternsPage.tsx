@@ -28,7 +28,10 @@ type PatternFormValues = {
   title: string;
   valueType: RegistryValueType;
   semanticKind: RegistrySemanticKind;
-  unit?: string;
+  canonicalUnit?: string;
+  allowedUnitsCsv?: string;
+  defaultInputUnit?: string;
+  conversionProfile?: string;
   formatJson?: string;
   constraintsJson?: string;
 };
@@ -70,7 +73,21 @@ const FieldPatternsPage: React.FC = () => {
         width: 120,
         render: (value: string) => <Tag>{value}</Tag>,
       },
-      { title: "Unit", dataIndex: "unit", key: "unit", width: 100 },
+      { title: "Canonical Unit", dataIndex: "canonicalUnit", key: "canonicalUnit", width: 130 },
+      {
+        title: "Allowed Units",
+        dataIndex: "allowedUnits",
+        key: "allowedUnits",
+        width: 180,
+        render: (units?: string[]) => (
+          <Space size={[4, 4]} wrap>
+            {(units?.length ? units : ["-"]).map(unit => (
+              <Tag key={unit}>{unit}</Tag>
+            ))}
+          </Space>
+        ),
+      },
+      { title: "Default Input", dataIndex: "defaultInputUnit", key: "defaultInputUnit", width: 130 },
       {
         title: "",
         key: "actions",
@@ -87,7 +104,10 @@ const FieldPatternsPage: React.FC = () => {
                   title: record.title,
                   valueType: record.valueType,
                   semanticKind: record.semanticKind,
-                  unit: record.unit ?? "",
+                  canonicalUnit: record.canonicalUnit ?? "",
+                  allowedUnitsCsv: (record.allowedUnits ?? []).join(", "),
+                  defaultInputUnit: record.defaultInputUnit ?? "",
+                  conversionProfile: record.conversionProfile ?? "",
                   formatJson: record.formatJson ?? "",
                   constraintsJson: record.constraintsJson ?? "",
                 });
@@ -139,7 +159,13 @@ const FieldPatternsPage: React.FC = () => {
         title: values.title.trim(),
         valueType: values.valueType,
         semanticKind: values.semanticKind,
-        unit: values.unit?.trim() || undefined,
+        canonicalUnit: values.canonicalUnit?.trim() || undefined,
+        allowedUnits: values.allowedUnitsCsv
+          ?.split(",")
+          .map(item => item.trim())
+          .filter(Boolean),
+        defaultInputUnit: values.defaultInputUnit?.trim() || undefined,
+        conversionProfile: values.conversionProfile?.trim() || undefined,
         formatJson: values.formatJson?.trim() || undefined,
         constraintsJson: values.constraintsJson?.trim() || undefined,
       });
@@ -221,12 +247,26 @@ const FieldPatternsPage: React.FC = () => {
                 { value: "ph", label: "ph" },
                 { value: "ppm", label: "ppm" },
                 { value: "temperature", label: "temperature" },
+                { value: "length", label: "length" },
+                { value: "concentration", label: "concentration" },
               ]}
             />
           </Form.Item>
 
-          <Form.Item name="unit" label="Unit">
-            <Input placeholder="e.g. ppm" />
+          <Form.Item name="canonicalUnit" label="Canonical Unit">
+            <Input placeholder="e.g. cm" />
+          </Form.Item>
+
+          <Form.Item name="allowedUnitsCsv" label="Allowed Units (comma separated)">
+            <Input placeholder="e.g. cm, ft" />
+          </Form.Item>
+
+          <Form.Item name="defaultInputUnit" label="Default Input Unit">
+            <Input placeholder="e.g. cm" />
+          </Form.Item>
+
+          <Form.Item name="conversionProfile" label="Conversion Profile">
+            <Input placeholder="e.g. ec_to_ppm_500" />
           </Form.Item>
 
           <Form.Item

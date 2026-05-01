@@ -117,7 +117,7 @@ const ProjectionStreamRegistryHubPage: React.FC = () => {
             title="FieldSpec Catalog"
             extra={<Tag color="purple">contract</Tag>}
             actions={[
-              <Button type="link" onClick={() => navigate("/primitives")}>
+              <Button type="link" onClick={() => navigate("/field-specs")}>
                 Open Field Specs
               </Button>,
             ]}

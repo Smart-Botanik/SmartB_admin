@@ -1,91 +1,122 @@
+import { graphqlClient } from "@/services/graphql/client";
 import type { RegistrySemanticKind, RegistryValueType } from "@/services/registryFieldSpecs";
 
-const FIELD_PATTERNS_STORAGE_KEY = "registry_field_patterns_v1";
-
 export type FieldPattern = {
+  id?: string;
   key: string;
   title: string;
   valueType: RegistryValueType;
   semanticKind: RegistrySemanticKind;
-  unit?: string;
+  canonicalUnit?: string;
+  allowedUnits?: string[];
+  defaultInputUnit?: string;
+  conversionProfile?: string;
   formatJson?: string;
   constraintsJson?: string;
+  isActive?: boolean;
 };
 
-const DEFAULT_PATTERNS: FieldPattern[] = [
-  {
-    key: "ph.decimal.v1",
-    title: "pH decimal",
-    valueType: "number",
-    semanticKind: "ph",
-    unit: "pH",
-    formatJson: JSON.stringify({ mode: "decimal", precision: 1, step: 0.1 }, null, 2),
-    constraintsJson: JSON.stringify({ min: 0, max: 14 }, null, 2),
-  },
-  {
-    key: "ppm.integer.v1",
-    title: "PPM integer",
-    valueType: "number",
-    semanticKind: "ppm",
-    unit: "ppm",
-    formatJson: JSON.stringify({ mode: "integer", step: 1 }, null, 2),
-    constraintsJson: JSON.stringify({ min: 0, max: 5000 }, null, 2),
-  },
-  {
-    key: "temperature.decimal.v1",
-    title: "Temperature decimal",
-    valueType: "number",
-    semanticKind: "temperature",
-    unit: "C",
-    formatJson: JSON.stringify({ mode: "decimal", precision: 1, step: 0.1 }, null, 2),
-    constraintsJson: JSON.stringify({ min: -20, max: 80 }, null, 2),
-  },
-];
-
-const safeParse = (raw: string | null): FieldPattern[] | null => {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as FieldPattern[];
-    if (!Array.isArray(parsed)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+const parseOptionalJson = (payload?: string) => {
+  if (!payload?.trim()) return undefined;
+  return JSON.parse(payload);
 };
 
-const readPatterns = (): FieldPattern[] => {
-  const saved = safeParse(window.localStorage.getItem(FIELD_PATTERNS_STORAGE_KEY));
-  if (saved && saved.length > 0) {
-    return saved;
-  }
-  window.localStorage.setItem(FIELD_PATTERNS_STORAGE_KEY, JSON.stringify(DEFAULT_PATTERNS));
-  return DEFAULT_PATTERNS;
-};
-
-const writePatterns = (patterns: FieldPattern[]) => {
-  window.localStorage.setItem(FIELD_PATTERNS_STORAGE_KEY, JSON.stringify(patterns));
+const toPrettyJson = (payload?: unknown) => {
+  if (!payload) return undefined;
+  return JSON.stringify(payload, null, 2);
 };
 
 export const fieldPatternsService = {
   list: async (): Promise<FieldPattern[]> => {
-    return readPatterns().sort((a, b) => a.key.localeCompare(b.key));
+    const query = `
+      query RegistryFieldPatterns($isActive: Boolean) {
+        registryFieldPatterns(isActive: $isActive) {
+          id
+          key
+          title
+          valueType
+          semanticKind
+          canonicalUnit
+          allowedUnits
+          defaultInputUnit
+          conversionProfile
+          formatJson
+          constraintsJson
+          isActive
+        }
+      }
+    `;
+    const resp = await graphqlClient.request<
+      { registryFieldPatterns: Array<Omit<FieldPattern, "formatJson" | "constraintsJson"> & { formatJson?: unknown; constraintsJson?: unknown }> },
+      { isActive?: boolean }
+    >({
+      query,
+      variables: { isActive: true },
+      operationName: "RegistryFieldPatterns",
+    });
+    return resp.registryFieldPatterns.map(item => ({
+      ...item,
+      formatJson: toPrettyJson(item.formatJson),
+      constraintsJson: toPrettyJson(item.constraintsJson),
+    }));
   },
 
   upsert: async (input: FieldPattern): Promise<FieldPattern> => {
-    const patterns = readPatterns();
-    const index = patterns.findIndex(item => item.key === input.key);
-    if (index >= 0) {
-      patterns[index] = input;
-    } else {
-      patterns.push(input);
-    }
-    writePatterns(patterns);
-    return input;
+    const query = `
+      mutation UpsertRegistryFieldPattern($input: UpsertRegistryFieldPatternInput!) {
+        upsertRegistryFieldPattern(input: $input) {
+          id
+          key
+          title
+          valueType
+          semanticKind
+          canonicalUnit
+          allowedUnits
+          defaultInputUnit
+          conversionProfile
+          formatJson
+          constraintsJson
+          isActive
+        }
+      }
+    `;
+    const resp = await graphqlClient.request<
+      { upsertRegistryFieldPattern: Omit<FieldPattern, "formatJson" | "constraintsJson"> & { formatJson?: unknown; constraintsJson?: unknown } },
+      { input: Record<string, unknown> }
+    >({
+      query,
+      variables: {
+        input: {
+          key: input.key,
+          title: input.title,
+          valueType: input.valueType,
+          semanticKind: input.semanticKind,
+          canonicalUnit: input.canonicalUnit,
+          allowedUnits: input.allowedUnits,
+          defaultInputUnit: input.defaultInputUnit,
+          conversionProfile: input.conversionProfile,
+          formatJson: parseOptionalJson(input.formatJson),
+          constraintsJson: parseOptionalJson(input.constraintsJson),
+          isActive: input.isActive ?? true,
+        },
+      },
+      operationName: "UpsertRegistryFieldPattern",
+    });
+    return {
+      ...resp.upsertRegistryFieldPattern,
+      formatJson: toPrettyJson(resp.upsertRegistryFieldPattern.formatJson),
+      constraintsJson: toPrettyJson(resp.upsertRegistryFieldPattern.constraintsJson),
+    };
   },
 
   remove: async (key: string): Promise<void> => {
-    const patterns = readPatterns().filter(item => item.key !== key);
-    writePatterns(patterns);
+    const existing = await fieldPatternsService.list();
+    const target = existing.find(item => item.key === key);
+    if (!target) return;
+    await fieldPatternsService.upsert({
+      ...target,
+      isActive: false,
+    });
   },
 };
 

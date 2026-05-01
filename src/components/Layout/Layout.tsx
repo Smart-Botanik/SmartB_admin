@@ -381,9 +381,9 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           label: createMenuItemLabel("Action Path Registry", "/registry"),
         },
         {
-          key: "/primitives",
+          key: "/field-specs",
           icon: <DatabaseOutlined />,
-          label: createMenuItemLabel("Primitives", "/primitives"),
+          label: createMenuItemLabel("Field Specs", "/field-specs"),
         },
         {
           key: "/field-patterns",
@@ -422,8 +422,11 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     if (location.pathname.startsWith("/tags")) {
       return "/tags";
     }
+    if (location.pathname.startsWith("/field-specs")) {
+      return "/field-specs";
+    }
     if (location.pathname.startsWith("/primitives")) {
-      return "/primitives";
+      return "/field-specs";
     }
     if (location.pathname.startsWith("/field-patterns")) {
       return "/field-patterns";

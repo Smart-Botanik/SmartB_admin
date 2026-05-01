@@ -7,7 +7,13 @@ export type RegistryValueType =
   | "date"
   | "enum"
   | "json";
-export type RegistrySemanticKind = "generic" | "ph" | "ppm" | "temperature";
+export type RegistrySemanticKind =
+  | "generic"
+  | "ph"
+  | "ppm"
+  | "temperature"
+  | "length"
+  | "concentration";
 export type RegistryFieldSpecStatus = "active" | "deprecated";
 
 export interface RegistryFieldSpec {
@@ -22,6 +28,7 @@ export interface RegistryFieldSpec {
   required: boolean;
   formatJson?: Record<string, unknown> | null;
   constraintsJson?: Record<string, unknown> | null;
+  fieldPatternKey?: string | null;
   includeInCurrent: boolean;
   status: RegistryFieldSpecStatus;
   version: number;
@@ -40,6 +47,7 @@ type TUpsertInput = {
   required?: boolean;
   formatJson?: string;
   constraintsJson?: string;
+  fieldPatternKey?: string;
   includeInCurrent?: boolean;
   status?: RegistryFieldSpecStatus;
 };
@@ -65,6 +73,7 @@ export const registryFieldSpecsService = {
           required
           formatJson
           constraintsJson
+          fieldPatternKey
           includeInCurrent
           status
           version
@@ -101,6 +110,7 @@ export const registryFieldSpecsService = {
           required
           formatJson
           constraintsJson
+          fieldPatternKey
           includeInCurrent
           status
           version
@@ -120,6 +130,7 @@ export const registryFieldSpecsService = {
           ...input,
           formatJson: parseOptionalJson(input.formatJson),
           constraintsJson: parseOptionalJson(input.constraintsJson),
+          fieldPatternKey: input.fieldPatternKey,
         },
       },
       operationName: "UpsertRegistryFieldSpec",

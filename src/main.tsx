@@ -41,7 +41,7 @@ import ActionPathRegistryPage from "@/pages/ActionPathRegistry/ActionPathRegistr
 import ActionPathRegistryUpsertPage from "@/pages/ActionPathRegistry/ActionPathRegistryUpsertPage";
 import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathRegistryEditPage";
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
-import PrimitivesPage from "@/pages/Primitives/PrimitivesPage";
+import FieldSpecsPage from "@/pages/Primitives/PrimitivesPage";
 import FieldPatternsPage from "@/pages/FieldPatterns/FieldPatternsPage";
 import ProjectionStreamRegistryHubPage from "@/pages/ProjectionStreamRegistry/ProjectionStreamRegistryHubPage";
 import RegistryProfileBuilderPage from "@/pages/ProjectionStreamRegistry/RegistryProfileBuilderPage";
@@ -120,8 +120,8 @@ const App: React.FC = () => {
               list: "/tags",
             },
             {
-              name: "primitives",
-              list: "/primitives",
+              name: "field-specs",
+              list: "/field-specs",
             },
             {
               name: "field-patterns",
@@ -252,7 +252,8 @@ const App: React.FC = () => {
                           path="/tags/icons"
                           element={<RegistryTagIconsPage />}
                         />
-                        <Route path="/primitives" element={<PrimitivesPage />} />
+                        <Route path="/field-specs" element={<FieldSpecsPage />} />
+                        <Route path="/primitives" element={<FieldSpecsPage />} />
                         <Route path="/field-patterns" element={<FieldPatternsPage />} />
                         <Route
                           path="/projection-stream-registry"
