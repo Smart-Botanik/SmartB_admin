@@ -46,6 +46,11 @@ const ProjectionStreamRegistryHubPage: React.FC = () => {
     []
   );
 
+  const wateringProfile = useMemo(
+    () => profiles.find(profile => profile.key === "watering.event.v1") ?? null,
+    [profiles]
+  );
+
   return (
     <div style={{ padding: 24 }}>
       <Title level={3} style={{ marginTop: 0 }}>
@@ -90,6 +95,31 @@ const ProjectionStreamRegistryHubPage: React.FC = () => {
             columns={profileColumns}
             pagination={false}
           />
+        </Space>
+      </Card>
+
+      <Card
+        title="Pilot Profile: watering.event.v1"
+        style={{ marginBottom: 16 }}
+        extra={wateringProfile ? <Tag color="green">ready</Tag> : <Tag color="gold">not found</Tag>}
+        actions={[
+          <Button type="link" onClick={() => navigate("/projection-stream-registry/profiles")}>
+            Open Profile Builder
+          </Button>,
+        ]}
+      >
+        <Space direction="vertical" size={6}>
+          <Text>
+            First E2E contract for Plant watering payloads. It must be validated as a Profile before
+            Event Definitions start referencing it.
+          </Text>
+          <Text>
+            Fields: {wateringProfile?.fields.length ?? 0} selected | Kind:{" "}
+            {wateringProfile?.kind ?? "event_write"}
+          </Text>
+          <Text type="secondary">
+            Gate: FieldSpecs/Profile → Build Preview → Event Definition.
+          </Text>
         </Space>
       </Card>
 

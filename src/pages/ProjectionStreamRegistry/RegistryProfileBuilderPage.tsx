@@ -5,6 +5,7 @@ import {
   Card,
   Checkbox,
   Col,
+  Divider,
   Form,
   Input,
   Row,
@@ -19,6 +20,7 @@ import type { ColumnsType } from "antd/es/table";
 import { registryFieldSpecsService, type RegistryFieldSpec } from "@/services/registryFieldSpecs";
 import {
   registryProfilesService,
+  type RegistryBuildPreviewResult,
   type RegistryProfile,
   type RegistryProfileKind,
 } from "@/services/registryProfiles";
@@ -38,15 +40,55 @@ const kindOptions: Array<{ value: RegistryProfileKind; label: string }> = [
   { value: "snapshot_build", label: "snapshot_build" },
 ];
 
+const wateringPreviewValues = {
+  "plant.watering.solution.ph": 6.2,
+  "plant.watering.solution.ppm": 820,
+  "plant.watering.drainage.ph": 6.4,
+  "plant.watering.drainage.ppm": 900,
+  "plant.watering.nutrients": [
+    {
+      productId: "product-1",
+      product: "Base Nutrient",
+      nutrient_amount: { value: 1.5, unit: "mll" },
+    },
+  ],
+};
+
+const setValueAtPath = (
+  target: Record<string, unknown>,
+  path: string,
+  value: unknown
+) => {
+  const segments = path.split(".");
+  let cursor = target;
+  segments.forEach((segment, index) => {
+    if (index === segments.length - 1) {
+      cursor[segment] = value;
+      return;
+    }
+    const next = cursor[segment];
+    if (!next || typeof next !== "object" || Array.isArray(next)) {
+      cursor[segment] = {};
+    }
+    cursor = cursor[segment] as Record<string, unknown>;
+  });
+};
+
 const RegistryProfileBuilderPage: React.FC = () => {
   const [form] = Form.useForm<ProfileFormValues>();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [previewSubmitting, setPreviewSubmitting] = useState(false);
   const [profiles, setProfiles] = useState<RegistryProfile[]>([]);
   const [fieldSpecs, setFieldSpecs] = useState<RegistryFieldSpec[]>([]);
   const [selectedProfileKey, setSelectedProfileKey] = useState<string>("");
   const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>([]);
   const [requiredFieldIds, setRequiredFieldIds] = useState<string[]>([]);
+  const [previewValuesJson, setPreviewValuesJson] = useState(
+    JSON.stringify(wateringPreviewValues, null, 2)
+  );
+  const [buildPreviewResult, setBuildPreviewResult] =
+    useState<RegistryBuildPreviewResult | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -128,6 +170,46 @@ const RegistryProfileBuilderPage: React.FC = () => {
     },
   ];
 
+  const fieldColumns: ColumnsType<RegistryFieldSpec> = [
+    { title: "Field ID", dataIndex: "fieldId", key: "fieldId" },
+    { title: "Label", dataIndex: "label", key: "label", width: 180 },
+    {
+      title: "Type",
+      key: "valueType",
+      width: 120,
+      render: (_, field) => (
+        <Space size={4} wrap>
+          <Tag>{field.valueType}</Tag>
+          <Tag>{field.semanticKind}</Tag>
+        </Space>
+      ),
+    },
+    { title: "Unit", dataIndex: "unit", key: "unit", width: 80 },
+    { title: "Canonical Path", dataIndex: "canonicalPath", key: "canonicalPath" },
+    {
+      title: "Policy",
+      key: "policy",
+      width: 180,
+      render: (_, field) => (
+        <Space size={4} wrap>
+          {field.required ? <Tag color="blue">field required</Tag> : <Tag>optional</Tag>}
+          {field.includeInCurrent ? <Tag color="green">current</Tag> : null}
+          {field.fieldPatternKey ? <Tag color="purple">{field.fieldPatternKey}</Tag> : null}
+        </Space>
+      ),
+    },
+  ];
+
+  const payloadShape = useMemo(() => {
+    const shape: Record<string, unknown> = {};
+    selectedFieldIds.forEach(fieldId => {
+      const field = fieldMap.get(fieldId);
+      if (!field) return;
+      setValueAtPath(shape, field.canonicalPath, `<${field.fieldId}>`);
+    });
+    return shape;
+  }, [fieldMap, selectedFieldIds]);
+
   const saveProfileMeta = async () => {
     try {
       const values = await form.validateFields();
@@ -176,6 +258,43 @@ const RegistryProfileBuilderPage: React.FC = () => {
       message.error(error?.message ?? "Failed to save profile field set");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const runBuildPreview = async () => {
+    if (!selectedProfileKey.trim()) {
+      message.warning("Select or create profile first");
+      return;
+    }
+
+    let valuesJson: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(previewValuesJson);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Preview values must be a JSON object keyed by fieldId");
+      }
+      valuesJson = parsed;
+    } catch (error: any) {
+      message.error(error?.message ?? "Preview values must be valid JSON");
+      return;
+    }
+
+    setPreviewSubmitting(true);
+    try {
+      const result = await registryProfilesService.buildPreview({
+        profileKey: selectedProfileKey,
+        valuesJson,
+      });
+      setBuildPreviewResult(result);
+      if (result.errors.length) {
+        message.warning("Preview returned validation errors");
+      } else {
+        message.success("Preview payload built");
+      }
+    } catch (error: any) {
+      message.error(error?.message ?? "Failed to build profile preview");
+    } finally {
+      setPreviewSubmitting(false);
     }
   };
 
@@ -310,6 +429,22 @@ const RegistryProfileBuilderPage: React.FC = () => {
                 }))}
               />
 
+              <Table<RegistryFieldSpec>
+                size="small"
+                rowKey="fieldId"
+                pagination={{ pageSize: 5 }}
+                dataSource={fieldSpecs}
+                columns={fieldColumns}
+                rowSelection={{
+                  selectedRowKeys: selectedFieldIds,
+                  onChange: keys => {
+                    const next = keys.map(String);
+                    setSelectedFieldIds(next);
+                    setRequiredFieldIds(prev => prev.filter(id => next.includes(id)));
+                  },
+                }}
+              />
+
               <Select
                 mode="multiple"
                 placeholder="Select required field IDs"
@@ -330,6 +465,15 @@ const RegistryProfileBuilderPage: React.FC = () => {
                 locale={{ emptyText: "Select fields to preview canonical paths" }}
               />
 
+              <Divider style={{ margin: "8px 0" }} />
+
+              <Typography.Text strong>Payload Shape</Typography.Text>
+              <Input.TextArea
+                readOnly
+                rows={8}
+                value={JSON.stringify(payloadShape, null, 2)}
+              />
+
               <Button
                 type="primary"
                 onClick={saveProfileFields}
@@ -342,6 +486,57 @@ const RegistryProfileBuilderPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      <Card title="Build Preview" style={{ marginTop: 16 }}>
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Alert
+            type="info"
+            showIcon
+            message="Preview validates a valuesJson map and builds payload by canonicalPath"
+            description="Input keys are FieldSpec fieldIds. Output is the payload that an Event Definition can later reuse through profileKey."
+          />
+          <Input.TextArea
+            rows={10}
+            value={previewValuesJson}
+            onChange={event => setPreviewValuesJson(event.target.value)}
+          />
+          <Button
+            type="primary"
+            onClick={runBuildPreview}
+            loading={previewSubmitting}
+            disabled={!selectedProfileKey}
+          >
+            Build Preview
+          </Button>
+          {buildPreviewResult ? (
+            <Row gutter={[16, 16]}>
+              <Col xs={24} lg={12}>
+                <Typography.Text strong>Payload</Typography.Text>
+                <Input.TextArea
+                  readOnly
+                  rows={12}
+                  value={JSON.stringify(buildPreviewResult.payload, null, 2)}
+                />
+              </Col>
+              <Col xs={24} lg={12}>
+                <Typography.Text strong>Errors</Typography.Text>
+                <Table
+                  size="small"
+                  rowKey={(_, index) => String(index)}
+                  pagination={false}
+                  dataSource={buildPreviewResult.errors}
+                  columns={[
+                    { title: "Field ID", dataIndex: "fieldId", key: "fieldId" },
+                    { title: "Code", dataIndex: "code", key: "code", width: 140 },
+                    { title: "Message", dataIndex: "message", key: "message" },
+                  ]}
+                  locale={{ emptyText: "No validation errors" }}
+                />
+              </Col>
+            </Row>
+          ) : null}
+        </Space>
+      </Card>
     </div>
   );
 };

@@ -41,6 +41,22 @@ type SetRegistryProfileFieldsInput = {
   requiredFieldIds?: string[];
 };
 
+export interface RegistryBuildPreviewError {
+  fieldId?: string | null;
+  code: string;
+  message: string;
+}
+
+export interface RegistryBuildPreviewResult {
+  payload: Record<string, unknown>;
+  errors: RegistryBuildPreviewError[];
+}
+
+type RegistryBuildPreviewInput = {
+  profileKey: string;
+  valuesJson: Record<string, unknown>;
+};
+
 export const registryProfilesService = {
   list: async (params?: {
     entity?: string;
@@ -188,6 +204,32 @@ export const registryProfilesService = {
     });
 
     return resp.setRegistryProfileFields;
+  },
+
+  buildPreview: async (input: RegistryBuildPreviewInput) => {
+    const query = `
+      query RegistryBuildPreview($input: RegistryBuildPreviewInput!) {
+        registryBuildPreview(input: $input) {
+          payload
+          errors {
+            fieldId
+            code
+            message
+          }
+        }
+      }
+    `;
+
+    const resp = await graphqlClient.request<
+      { registryBuildPreview: RegistryBuildPreviewResult },
+      { input: RegistryBuildPreviewInput }
+    >({
+      query,
+      variables: { input },
+      operationName: "RegistryBuildPreview",
+    });
+
+    return resp.registryBuildPreview;
   },
 };
 
