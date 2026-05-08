@@ -40,6 +40,8 @@ const kindOptions: Array<{ value: RegistryProfileKind; label: string }> = [
   { value: "snapshot_build", label: "snapshot_build" },
 ];
 
+const fullWidthStyle: React.CSSProperties = { width: "100%" };
+
 const wateringPreviewValues = {
   "plant.watering.solution.ph": 6.2,
   "plant.watering.solution.ppm": 820,
@@ -320,6 +322,7 @@ const RegistryProfileBuilderPage: React.FC = () => {
                 allowClear
                 showSearch
                 placeholder="Load existing profile"
+                style={fullWidthStyle}
                 value={selectedProfileKey || undefined}
                 options={profiles.map(p => ({
                   value: p.key,
@@ -418,6 +421,8 @@ const RegistryProfileBuilderPage: React.FC = () => {
               <Select
                 mode="multiple"
                 placeholder="Select field IDs for this profile"
+                style={fullWidthStyle}
+                maxTagCount="responsive"
                 value={selectedFieldIds}
                 onChange={(value: string[]) => {
                   setSelectedFieldIds(value);
@@ -448,6 +453,8 @@ const RegistryProfileBuilderPage: React.FC = () => {
               <Select
                 mode="multiple"
                 placeholder="Select required field IDs"
+                style={fullWidthStyle}
+                maxTagCount="responsive"
                 value={requiredFieldIds}
                 onChange={(value: string[]) => setRequiredFieldIds(value)}
                 options={selectedFieldIds.map(fieldId => ({
