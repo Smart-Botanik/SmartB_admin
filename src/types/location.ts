@@ -20,6 +20,51 @@ export type LocationWateringType =
   | "hydroponics"
   | "aeroponics";
 
+export type LocationSpecKind = "lighting" | "enclosure" | "space" | "area";
+
+export interface LocationSpecsLighting {
+  specBlockId?: string;
+  vegetationLamps?: unknown[] | null;
+  bloomLamps?: unknown[] | null;
+}
+
+export interface LocationSpecsEnclosureProduct {
+  id: string;
+  name: string;
+}
+
+export interface LocationSpecsEnclosure {
+  specBlockId?: string;
+  product?: LocationSpecsEnclosureProduct | null;
+  productId?: string | null;
+  width?: number | null;
+  height?: number | null;
+  depth?: number | null;
+}
+
+export interface LocationSpecsSpace {
+  specBlockId?: string;
+  width?: number | null;
+  height?: number | null;
+  depth?: number | null;
+}
+
+export interface LocationSpecsArea {
+  specBlockId?: string;
+  width?: number | null;
+  depth?: number | null;
+}
+
+export interface LocationSpecBlock {
+  id?: string;
+  position: number;
+  kind: LocationSpecKind;
+  lighting?: LocationSpecsLighting | null;
+  enclosure?: LocationSpecsEnclosure | null;
+  space?: LocationSpecsSpace | null;
+  area?: LocationSpecsArea | null;
+}
+
 export interface AdminLocation {
   id: string;
   userId: string;
@@ -31,6 +76,7 @@ export interface AdminLocation {
   description: string | null;
   capacity: number | null;
   occupiedSlots: number | null;
+  specBlocks: LocationSpecBlock[];
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +90,7 @@ export interface UpdateAdminLocationInput {
   description?: string | null;
   capacity?: number | null;
   occupiedSlots?: number | null;
+  specBlocks?: LocationSpecBlock[];
 }
 
 export const LOCATION_STATUS_OPTIONS: { value: LocationStatus; label: string }[] =

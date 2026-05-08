@@ -23,6 +23,33 @@ const LOCATIONS_QUERY = `
       description
       capacity
       occupiedSlots
+      specBlocks {
+        id
+        position
+        kind
+        lighting {
+          vegetationLamps
+          bloomLamps
+        }
+        enclosure {
+          product {
+            id
+            name
+          }
+          width
+          height
+          depth
+        }
+        space {
+          width
+          height
+          depth
+        }
+        area {
+          width
+          depth
+        }
+      }
       createdAt
       updatedAt
     }
@@ -42,6 +69,33 @@ const LOCATION_QUERY = `
       description
       capacity
       occupiedSlots
+      specBlocks {
+        id
+        position
+        kind
+        lighting {
+          vegetationLamps
+          bloomLamps
+        }
+        enclosure {
+          product {
+            id
+            name
+          }
+          width
+          height
+          depth
+        }
+        space {
+          width
+          height
+          depth
+        }
+        area {
+          width
+          depth
+        }
+      }
       createdAt
       updatedAt
     }
@@ -61,6 +115,33 @@ const UPDATE_LOCATION_MUTATION = `
       description
       capacity
       occupiedSlots
+      specBlocks {
+        id
+        position
+        kind
+        lighting {
+          vegetationLamps
+          bloomLamps
+        }
+        enclosure {
+          product {
+            id
+            name
+          }
+          width
+          height
+          depth
+        }
+        space {
+          width
+          height
+          depth
+        }
+        area {
+          width
+          depth
+        }
+      }
       createdAt
       updatedAt
     }
