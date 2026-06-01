@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
   Card,
+  Descriptions,
   Form,
   Input,
   Select,
@@ -32,6 +33,7 @@ const DiaryEditPage: React.FC = () => {
   const [plantsCatalog, setPlantsCatalog] = useState<PlantListItem[]>([]);
   const [selectedPlantIds, setSelectedPlantIds] = useState<string[]>([]);
   const [linkSaving, setLinkSaving] = useState(false);
+  const [current, setCurrent] = useState<unknown>(null);
 
   useEffect(() => {
     if (!id) {
@@ -62,6 +64,7 @@ const DiaryEditPage: React.FC = () => {
         setLinkedPlants(linked);
         setSelectedPlantIds(linked.map((p) => p.id));
         setPlantsCatalog(plants);
+        setCurrent(diary.current ?? null);
       } catch (e: unknown) {
         if (cancelled) return;
         const msg =
@@ -125,6 +128,7 @@ const DiaryEditPage: React.FC = () => {
       const linked = updated.plants ?? [];
       setLinkedPlants(linked);
       setSelectedPlantIds(linked.map((p) => p.id));
+      setCurrent(updated.current ?? null);
       message.success("Сохранено");
     } catch (e: unknown) {
       const msg =
@@ -157,7 +161,12 @@ const DiaryEditPage: React.FC = () => {
         <Title level={3} style={{ margin: 0 }}>
           Редактирование дневника
         </Title>
-        <Button onClick={() => navigate("/diaries")}>К списку</Button>
+        <Space>
+          <Button onClick={() => navigate(`/events/create-diary?diaryId=${id}`)}>
+            Записать событие
+          </Button>
+          <Button onClick={() => navigate("/diaries")}>К списку</Button>
+        </Space>
       </Space>
 
       <Card title="Запись">
@@ -185,6 +194,22 @@ const DiaryEditPage: React.FC = () => {
             Сохранить
           </Button>
         </Form>
+      </Card>
+
+      <Card title="Current (read-only)">
+        {current ? (
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="snapshot">
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                {JSON.stringify(current, null, 2)}
+              </pre>
+            </Descriptions.Item>
+          </Descriptions>
+        ) : (
+          <Text type="secondary">
+            Current появится после первого события дневника.
+          </Text>
+        )}
       </Card>
 
       <Card title="Связанные растения">

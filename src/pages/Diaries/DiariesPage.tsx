@@ -10,7 +10,12 @@ import {
   Tooltip,
 } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  ThunderboltOutlined,
+} from "@ant-design/icons";
 
 import {
   diariesService,
@@ -29,6 +34,19 @@ function previewBody(body: string, maxLen = 80): string {
 function plantsLabel(plants: DiaryListItem["plants"]): string {
   if (!plants?.length) return "—";
   return plants.map((p) => p.name).join(", ");
+}
+
+function currentLabel(current: unknown): string {
+  if (!current || typeof current !== "object" || Array.isArray(current)) {
+    return "—";
+  }
+
+  const entries = Object.entries(current as Record<string, unknown>)
+    .filter(([key]) => key !== "provenance")
+    .slice(0, 3);
+  if (!entries.length) return "—";
+
+  return entries.map(([key, value]) => `${key}: ${String(value)}`).join(", ");
 }
 
 const DiariesPage: React.FC = () => {
@@ -108,6 +126,26 @@ const DiariesPage: React.FC = () => {
         ),
       },
       {
+        title: "Current",
+        key: "current",
+        width: 240,
+        ellipsis: true,
+        render: (_, r) => {
+          const label = currentLabel(r.current);
+          return (
+            <Text
+              type="secondary"
+              ellipsis
+              title={
+                r.current ? JSON.stringify(r.current, null, 2) : undefined
+              }
+            >
+              {label}
+            </Text>
+          );
+        },
+      },
+      {
         title: "Обновлено",
         dataIndex: "updatedAt",
         key: "updatedAt",
@@ -117,10 +155,22 @@ const DiariesPage: React.FC = () => {
       {
         title: "",
         key: "actions",
-        width: 96,
+        width: 136,
         align: "right",
         render: (_, record) => (
           <Space size={0} onClick={(e) => e.stopPropagation()}>
+            <Tooltip title="Записать событие">
+              <Button
+                type="text"
+                aria-label="Записать событие"
+                icon={<ThunderboltOutlined />}
+                onClick={() =>
+                  navigate(
+                    `/events/create-diary?diaryId=${encodeURIComponent(record.id)}`,
+                  )
+                }
+              />
+            </Tooltip>
             <Tooltip title="Редактировать">
               <Button
                 type="text"

@@ -9,6 +9,7 @@ export interface DiaryListItem {
   id: string;
   title?: string | null;
   body: string;
+  current?: unknown;
   plants: DiaryPlantSummary[];
   createdAt: string;
   updatedAt: string;
@@ -19,6 +20,7 @@ function diaryFieldsGql() {
     id
     title
     body
+    current
     plants {
       id
       name
@@ -156,5 +158,34 @@ export const diariesService = {
     });
 
     return resp.deleteDiary;
+  },
+
+  createDiaryEvent: async (params: {
+    diaryId: string;
+    actionPath: string;
+    payloadJson: string;
+  }) => {
+    const query = `
+      mutation CreateDiaryEvent($diaryId: ID!, $actionPath: String!, $payloadJson: String!) {
+        createDiaryEvent(diaryId: $diaryId, actionPath: $actionPath, payloadJson: $payloadJson) {
+          ${diaryFieldsGql()}
+        }
+      }
+    `;
+
+    const resp = await graphqlClient.request<
+      { createDiaryEvent: DiaryListItem },
+      { diaryId: string; actionPath: string; payloadJson: string }
+    >({
+      query,
+      variables: {
+        diaryId: params.diaryId,
+        actionPath: params.actionPath,
+        payloadJson: params.payloadJson,
+      },
+      operationName: "CreateDiaryEvent",
+    });
+
+    return resp.createDiaryEvent;
   },
 };
