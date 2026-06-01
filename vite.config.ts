@@ -13,6 +13,12 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "@growing/content-markdown": path.resolve(
+          __dirname,
+          "../packages/content-markdown/src/index.ts",
+        ),
+        "@growing/contracts": path.resolve(__dirname, "../packages/contracts/src/index.ts"),
+        "@growing/ui": path.resolve(__dirname, "../packages/ui/src/index.ts"),
       },
     },
     server: {
@@ -85,6 +91,7 @@ export default defineConfig(({ mode }) => {
         "react-router-dom",
         "@ant-design/icons",
       ],
+      exclude: ["@growing/content-markdown"],
     },
     define: {
       // Make env variables available to the app

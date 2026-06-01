@@ -23,7 +23,9 @@
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@growing/contracts": ["../packages/contracts/src/index.ts"],
+      "@growing/ui": ["../packages/ui/src/index.ts"]
     }
   },
   "include": ["src"],
