@@ -46,6 +46,7 @@ type SectionKey =
   | "analytics"
   | "work-zone"
   | "entities"
+  | "content"
   | "media"
   | "admin-section";
 
@@ -54,6 +55,7 @@ const SECTION_MENU_KEYS = [
   "section-analytics",
   "section-work-zone",
   "section-entities",
+  "section-content",
   "section-media",
   "section-admin-section",
 ] as const;
@@ -80,6 +82,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       analytics: false,
       "work-zone": false,
       entities: false,
+      content: false,
       media: false,
       "admin-section": false,
     },
@@ -336,6 +339,24 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       ],
     },
     {
+      key: "content",
+      title: "Контент",
+      menuKey: "section-content",
+      icon: <FileTextOutlined />,
+      items: [
+        {
+          key: "/content/guides",
+          icon: <FileTextOutlined />,
+          label: createMenuItemLabel("Руководства", "/content/guides"),
+        },
+        {
+          key: "/content/site-pages/home",
+          icon: <DashboardOutlined />,
+          label: createMenuItemLabel("Главная страница", "/content/site-pages/home"),
+        },
+      ],
+    },
+    {
       key: "media",
       title: "Media",
       menuKey: "section-media",
@@ -452,6 +473,12 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     if (location.pathname.startsWith("/brands")) {
       return "/brands";
     }
+    if (location.pathname.startsWith("/content/guides")) {
+      return "/content/guides";
+    }
+    if (location.pathname.startsWith("/content/site-pages")) {
+      return "/content/site-pages/home";
+    }
     if (location.pathname.startsWith("/media")) {
       return "/media";
     }
@@ -515,7 +542,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
             fontWeight: "bold",
           }}
         >
-          {isSidebarCollapsed ? "GA" : "Growing App"}
+          {isSidebarCollapsed ? "SB" : "SmartБотаник"}
         </div>
         {!isSidebarCollapsed ? (
           <div className="admin-layout-menu-controls">

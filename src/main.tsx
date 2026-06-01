@@ -36,6 +36,7 @@ import {
   EventsListPage,
   EventEditPage,
   CreatePlantEventPage,
+  CreateDiaryEventPage,
 } from "@/pages/Events";
 import ActionPathRegistryPage from "@/pages/ActionPathRegistry/ActionPathRegistryPage";
 import ActionPathRegistryUpsertPage from "@/pages/ActionPathRegistry/ActionPathRegistryUpsertPage";
@@ -43,6 +44,12 @@ import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathReg
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import FieldSpecsPage from "@/pages/Primitives/PrimitivesPage";
 import FieldPatternsPage from "@/pages/FieldPatterns/FieldPatternsPage";
+import {
+  GuidesPage,
+  GuideCreatePage,
+  GuideEditPage,
+  HomePageEditor,
+} from "@/pages/Content";
 import ProjectionStreamRegistryHubPage from "@/pages/ProjectionStreamRegistry/ProjectionStreamRegistryHubPage";
 import RegistryProfileBuilderPage from "@/pages/ProjectionStreamRegistry/RegistryProfileBuilderPage";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
@@ -215,10 +222,27 @@ const App: React.FC = () => {
                           element={<UserCreatePage />}
                         />
                         <Route path="/media" element={<MediaLibrary />} />
+                        <Route path="/content/guides" element={<GuidesPage />} />
+                        <Route
+                          path="/content/guides/create"
+                          element={<GuideCreatePage />}
+                        />
+                        <Route
+                          path="/content/guides/edit/:id"
+                          element={<GuideEditPage />}
+                        />
+                        <Route
+                          path="/content/site-pages/home"
+                          element={<HomePageEditor />}
+                        />
                         <Route path="/events" element={<EventsListPage />} />
                         <Route
                           path="/events/create-plant"
                           element={<CreatePlantEventPage />}
+                        />
+                        <Route
+                          path="/events/create-diary"
+                          element={<CreateDiaryEventPage />}
                         />
                         <Route
                           path="/events/definitions/new"
