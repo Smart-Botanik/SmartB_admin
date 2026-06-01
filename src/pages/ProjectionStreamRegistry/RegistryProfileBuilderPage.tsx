@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FC } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Alert,
   Button,
@@ -17,6 +18,13 @@ import {
   message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import {
+  buildNormalizedValuesJson,
+  createDefaultFieldInput,
+  type RegistryFieldInputValue,
+} from "@growing/contracts";
+import { UxRegistryProfileValuesForm, type UxRegistryProfileFieldRow } from "@growing/ui";
+import { fieldPatternsService, type FieldPattern } from "@/services/fieldPatterns";
 import { registryFieldSpecsService, type RegistryFieldSpec } from "@/services/registryFieldSpecs";
 import {
   registryProfilesService,
@@ -40,21 +48,51 @@ const kindOptions: Array<{ value: RegistryProfileKind; label: string }> = [
   { value: "snapshot_build", label: "snapshot_build" },
 ];
 
+const REGISTRY_BUILDER_ENTITIES = [
+  { value: "Plant", label: "Plant" },
+  { value: "Diary", label: "Diary" },
+  { value: "Location", label: "Location" },
+] as const;
+
+type RegistryBuilderEntity = (typeof REGISTRY_BUILDER_ENTITIES)[number]["value"];
+
 const fullWidthStyle: React.CSSProperties = { width: "100%" };
 
-const wateringPreviewValues = {
-  "plant.watering.solution.ph": 6.2,
-  "plant.watering.solution.ppm": 820,
-  "plant.watering.drainage.ph": 6.4,
-  "plant.watering.drainage.ppm": 900,
-  "plant.watering.nutrients": [
-    {
-      productId: "product-1",
-      product: "Base Nutrient",
-      nutrient_amount: { value: 1.5, unit: "mll" },
-    },
-  ],
+const wateringPreviewValues: Record<string, RegistryFieldInputValue> = {
+  "plant.watering.solution.ph": { value: 6.2, unit: "pH" },
+  "plant.watering.solution.ppm": { value: 820, unit: "ppm" },
+  "plant.watering.drainage.ph": { value: 6.4, unit: "pH" },
+  "plant.watering.drainage.ppm": { value: 900, unit: "ppm" },
+  "plant.watering.nutrients": {
+    value: JSON.stringify(
+      [
+        {
+          productId: "product-1",
+          product: "Base Nutrient",
+          nutrient_amount: { value: 1.5, unit: "mll" },
+        },
+      ],
+      null,
+      2,
+    ),
+  },
 };
+
+const diarySetupPreviewValues: Record<string, RegistryFieldInputValue> = {
+  "diary.setup.watering_type": { value: "hydroponics" },
+  "diary.setup.room_type": { value: "indoor" },
+};
+
+const PROFILE_PREVIEW_DEFAULTS: Record<string, Record<string, RegistryFieldInputValue>> = {
+  "watering.event.v1": wateringPreviewValues,
+  "diary.setup.config.v1": diarySetupPreviewValues,
+};
+
+const resolvePreviewDefault = (
+  profileKey: string,
+  fieldId: string,
+): RegistryFieldInputValue | undefined =>
+  PROFILE_PREVIEW_DEFAULTS[profileKey]?.[fieldId] ?? wateringPreviewValues[fieldId];
 
 const setValueAtPath = (
   target: Record<string, unknown>,
@@ -76,31 +114,39 @@ const setValueAtPath = (
   });
 };
 
-const RegistryProfileBuilderPage: React.FC = () => {
+const RegistryProfileBuilderPage: FC = () => {
+  const location = useLocation();
   const [form] = Form.useForm<ProfileFormValues>();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [previewSubmitting, setPreviewSubmitting] = useState(false);
   const [profiles, setProfiles] = useState<RegistryProfile[]>([]);
   const [fieldSpecs, setFieldSpecs] = useState<RegistryFieldSpec[]>([]);
+  const [fieldPatterns, setFieldPatterns] = useState<FieldPattern[]>([]);
   const [selectedProfileKey, setSelectedProfileKey] = useState<string>("");
   const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>([]);
   const [requiredFieldIds, setRequiredFieldIds] = useState<string[]>([]);
-  const [previewValuesJson, setPreviewValuesJson] = useState(
-    JSON.stringify(wateringPreviewValues, null, 2)
-  );
+  const [fieldInputs, setFieldInputs] = useState<Record<string, RegistryFieldInputValue>>({});
+  const [useAdvancedJson, setUseAdvancedJson] = useState(false);
+  const [previewValuesJson, setPreviewValuesJson] = useState("{}");
+  const [normalizeErrors, setNormalizeErrors] = useState<
+    Array<{ fieldId: string; code: string; message: string }>
+  >([]);
   const [buildPreviewResult, setBuildPreviewResult] =
     useState<RegistryBuildPreviewResult | null>(null);
+  const [builderEntity, setBuilderEntity] = useState<RegistryBuilderEntity>("Plant");
 
-  const load = async () => {
+  const load = async (entity: RegistryBuilderEntity = builderEntity) => {
     setLoading(true);
     try {
-      const [nextProfiles, nextFieldSpecs] = await Promise.all([
-        registryProfilesService.list({ entity: "Plant" }),
-        registryFieldSpecsService.list({ entity: "Plant", status: "active" }),
+      const [nextProfiles, nextFieldSpecs, nextPatterns] = await Promise.all([
+        registryProfilesService.list({ entity }),
+        registryFieldSpecsService.list({ entity, status: "active" }),
+        fieldPatternsService.list(),
       ]);
       setProfiles(nextProfiles);
       setFieldSpecs(nextFieldSpecs);
+      setFieldPatterns(nextPatterns);
     } catch (error: any) {
       message.error(error?.message ?? "Failed to load profile builder data");
     } finally {
@@ -108,9 +154,34 @@ const RegistryProfileBuilderPage: React.FC = () => {
     }
   };
 
+  const switchBuilderEntity = (entity: RegistryBuilderEntity) => {
+    setBuilderEntity(entity);
+    setSelectedProfileKey("");
+    setSelectedFieldIds([]);
+    setRequiredFieldIds([]);
+    setFieldInputs({});
+    setBuildPreviewResult(null);
+    setNormalizeErrors([]);
+    setPreviewValuesJson("{}");
+    form.setFieldsValue({
+      entity,
+      key: undefined,
+      title: undefined,
+      description: "",
+    });
+  };
+
   useEffect(() => {
-    load();
-  }, []);
+    load(builderEntity);
+  }, [builderEntity]);
+
+  useEffect(() => {
+    const fromHub = (location.state as { builderEntity?: RegistryBuilderEntity } | null)
+      ?.builderEntity;
+    if (fromHub && fromHub !== builderEntity) {
+      switchBuilderEntity(fromHub);
+    }
+  }, [location.state, builderEntity]);
 
   const selectedProfile = useMemo(
     () => profiles.find(profile => profile.key === selectedProfileKey) ?? null,
@@ -135,6 +206,68 @@ const RegistryProfileBuilderPage: React.FC = () => {
     }
     return map;
   }, [fieldSpecs]);
+
+  const patternMap = useMemo(() => {
+    const map = new Map<string, FieldPattern>();
+    for (const pattern of fieldPatterns) {
+      map.set(pattern.key, pattern);
+    }
+    return map;
+  }, [fieldPatterns]);
+
+  const runtimeFormFields = useMemo((): UxRegistryProfileFieldRow[] => {
+    return selectedFieldIds.flatMap(fieldId => {
+      const field = fieldMap.get(fieldId);
+      if (!field) return [];
+      const pattern = field.fieldPatternKey
+        ? patternMap.get(field.fieldPatternKey) ?? null
+        : null;
+
+      return [
+        {
+          fieldId: field.fieldId,
+          label: field.label,
+          valueType: field.valueType,
+          semanticKind: field.semanticKind,
+          unit: field.unit,
+          fieldPatternKey: field.fieldPatternKey,
+          formatJson: field.formatJson,
+          constraintsJson: field.constraintsJson,
+          required: requiredFieldIds.includes(fieldId),
+          pattern,
+        },
+      ];
+    });
+  }, [fieldMap, patternMap, requiredFieldIds, selectedFieldIds]);
+
+  useEffect(() => {
+    setFieldInputs(prev => {
+      const next: Record<string, RegistryFieldInputValue> = {};
+      selectedFieldIds.forEach(fieldId => {
+        if (prev[fieldId]) {
+          next[fieldId] = prev[fieldId];
+          return;
+        }
+
+        const field = fieldMap.get(fieldId);
+        const pattern = field?.fieldPatternKey
+          ? patternMap.get(field.fieldPatternKey) ?? null
+          : null;
+        next[fieldId] =
+          resolvePreviewDefault(selectedProfileKey, fieldId) ??
+          createDefaultFieldInput(
+            {
+              fieldId,
+              valueType: field?.valueType ?? "string",
+              unit: field?.unit,
+              fieldPatternKey: field?.fieldPatternKey,
+            },
+            pattern,
+          );
+      });
+      return next;
+    });
+  }, [fieldMap, patternMap, selectedFieldIds, selectedProfileKey]);
 
   const previewRows = useMemo(
     () =>
@@ -226,7 +359,7 @@ const RegistryProfileBuilderPage: React.FC = () => {
       });
       message.success("Profile saved");
       setSelectedProfileKey(profile.key);
-      await load();
+      await load(builderEntity);
     } catch (error: any) {
       if (error?.errorFields) {
         return;
@@ -255,7 +388,7 @@ const RegistryProfileBuilderPage: React.FC = () => {
         requiredFieldIds: required,
       });
       message.success("Profile field selection saved");
-      await load();
+      await load(builderEntity);
     } catch (error: any) {
       message.error(error?.message ?? "Failed to save profile field set");
     } finally {
@@ -270,15 +403,37 @@ const RegistryProfileBuilderPage: React.FC = () => {
     }
 
     let valuesJson: Record<string, unknown>;
-    try {
-      const parsed = JSON.parse(previewValuesJson);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        throw new Error("Preview values must be a JSON object keyed by fieldId");
+    let nextNormalizeErrors: Array<{ fieldId: string; code: string; message: string }> = [];
+
+    if (useAdvancedJson) {
+      try {
+        const parsed = JSON.parse(previewValuesJson);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("Preview values must be a JSON object keyed by fieldId");
+        }
+        valuesJson = parsed;
+      } catch (error: any) {
+        message.error(error?.message ?? "Preview values must be valid JSON");
+        return;
       }
-      valuesJson = parsed;
-    } catch (error: any) {
-      message.error(error?.message ?? "Preview values must be valid JSON");
-      return;
+    } else {
+      const buildResult = buildNormalizedValuesJson(
+        runtimeFormFields.map(field => ({
+          field,
+          pattern: field.pattern,
+          input: fieldInputs[field.fieldId] ?? {},
+          required: field.required,
+        })),
+      );
+      valuesJson = buildResult.valuesJson;
+      nextNormalizeErrors = buildResult.errors;
+      setNormalizeErrors(nextNormalizeErrors);
+      setPreviewValuesJson(JSON.stringify(valuesJson, null, 2));
+
+      if (nextNormalizeErrors.length) {
+        message.warning("Fix unit/value errors before preview");
+        return;
+      }
     }
 
     setPreviewSubmitting(true);
@@ -305,6 +460,18 @@ const RegistryProfileBuilderPage: React.FC = () => {
       <Typography.Title level={3} style={{ marginTop: 0 }}>
         Profile Builder (v1)
       </Typography.Title>
+
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Typography.Text strong>Entity scope:</Typography.Text>
+        <Select<RegistryBuilderEntity>
+          style={{ minWidth: 160 }}
+          value={builderEntity}
+          options={[...REGISTRY_BUILDER_ENTITIES]}
+          onChange={switchBuilderEntity}
+        />
+        <Tag color="blue">{fieldSpecs.length} active Field Specs</Tag>
+        <Tag>{profiles.length} profiles</Tag>
+      </Space>
 
       <Alert
         type="info"
@@ -335,11 +502,14 @@ const RegistryProfileBuilderPage: React.FC = () => {
                   if (!profile) {
                     form.resetFields();
                     form.setFieldsValue({
-                      entity: "Plant",
+                      entity: builderEntity,
                       kind: "event_write",
                       isActive: true,
                     });
                     return;
+                  }
+                  if (profile.entity !== builderEntity) {
+                    setBuilderEntity(profile.entity as RegistryBuilderEntity);
                   }
                   form.setFieldsValue({
                     key: profile.key,
@@ -356,7 +526,7 @@ const RegistryProfileBuilderPage: React.FC = () => {
                 form={form}
                 layout="vertical"
                 initialValues={{
-                  entity: "Plant",
+                  entity: builderEntity,
                   kind: "event_write",
                   isActive: true,
                 }}
@@ -380,7 +550,7 @@ const RegistryProfileBuilderPage: React.FC = () => {
                   label="Entity"
                   rules={[{ required: true, message: "Entity is required" }]}
                 >
-                  <Select options={[{ value: "Plant", label: "Plant" }]} />
+                  <Select options={[...REGISTRY_BUILDER_ENTITIES]} />
                 </Form.Item>
 
                 <Form.Item
@@ -499,19 +669,55 @@ const RegistryProfileBuilderPage: React.FC = () => {
           <Alert
             type="info"
             showIcon
-            message="Preview validates a valuesJson map and builds payload by canonicalPath"
-            description="Input keys are FieldSpec fieldIds. Output is the payload that an Event Definition can later reuse through profileKey."
+            message="Runtime values form with unit normalization"
+            description="User input unit → canonical unit через @growing/contracts перед buildPreview. Advanced JSON — escape hatch для отладки."
           />
-          <Input.TextArea
-            rows={10}
-            value={previewValuesJson}
-            onChange={event => setPreviewValuesJson(event.target.value)}
-          />
+
+          <Checkbox
+            checked={useAdvancedJson}
+            onChange={event => setUseAdvancedJson(event.target.checked)}
+          >
+            Advanced JSON (canonical valuesJson, skip normalizer)
+          </Checkbox>
+
+          {useAdvancedJson ? (
+            <Input.TextArea
+              rows={10}
+              value={previewValuesJson}
+              onChange={event => setPreviewValuesJson(event.target.value)}
+            />
+          ) : (
+            <UxRegistryProfileValuesForm
+              fields={runtimeFormFields}
+              values={fieldInputs}
+              onChange={(fieldId, next) =>
+                setFieldInputs(prev => ({
+                  ...prev,
+                  [fieldId]: next,
+                }))
+              }
+            />
+          )}
+
+          {normalizeErrors.length && !useAdvancedJson ? (
+            <Table
+              size="small"
+              rowKey={(_, index) => String(index)}
+              pagination={false}
+              dataSource={normalizeErrors}
+              columns={[
+                { title: "Field ID", dataIndex: "fieldId", key: "fieldId" },
+                { title: "Code", dataIndex: "code", key: "code", width: 180 },
+                { title: "Message", dataIndex: "message", key: "message" },
+              ]}
+            />
+          ) : null}
+
           <Button
             type="primary"
             onClick={runBuildPreview}
             loading={previewSubmitting}
-            disabled={!selectedProfileKey}
+            disabled={!selectedProfileKey || (!useAdvancedJson && !selectedFieldIds.length)}
           >
             Build Preview
           </Button>
