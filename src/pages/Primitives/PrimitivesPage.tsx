@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
   Checkbox,
+  Collapse,
+  Divider,
   Form,
   Input,
   Modal,
@@ -10,11 +12,27 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
+import {
+  FieldSpecControllerPreview,
+  FieldSpecNumericSection,
+  buildConstraintsJson,
+  buildFormatJson,
+  formatJsonToString,
+  parseConstraintsJson,
+  parseFormatJson,
+} from "@/components/FieldSpecs";
 import {
   RegistryFieldSpec,
   RegistryFieldSpecStatus,
@@ -41,16 +59,65 @@ type FieldSpecFormValues = {
   semanticKind: RegistrySemanticKind;
   canonicalPath: string;
   unit?: string;
-  status?: RegistryFieldSpecStatus;
   includeInCurrent?: boolean;
   required?: boolean;
+  formatMode?: "integer" | "decimal";
+  formatPrecision?: number;
+  formatStep?: number;
+  constraintMin?: number;
+  constraintMax?: number;
   formatJson?: string;
   constraintsJson?: string;
 };
 
+const parseJsonPayload = (raw?: string | Record<string, unknown> | null) => {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+const serializeFormatAndConstraints = (values: FieldSpecFormValues) => {
+  if (values.valueType === "number") {
+    return {
+      formatJson:
+        formatJsonToString(
+          buildFormatJson({
+            formatMode: values.formatMode,
+            formatPrecision: values.formatPrecision,
+            formatStep: values.formatStep,
+          }),
+        ) || undefined,
+      constraintsJson:
+        formatJsonToString(
+          buildConstraintsJson({
+            constraintMin: values.constraintMin,
+            constraintMax: values.constraintMax,
+          }),
+        ) || undefined,
+    };
+  }
+
+  return {
+    formatJson: values.formatJson?.trim() || undefined,
+    constraintsJson: values.constraintsJson?.trim() || undefined,
+  };
+};
+
+type StatusFilter = RegistryFieldSpecStatus | "all";
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "active", label: "Активные" },
+  { value: "deprecated", label: "Deprecated" },
+  { value: "all", label: "Все" },
+];
+
 const FieldSpecStatusTag: React.FC<{ status: RegistryFieldSpecStatus }> = ({ status }) => {
   if (status === "deprecated") {
-    return <Tag color="orange">deprecated</Tag>;
+    return <Tag color="orange">DEPRECATED</Tag>;
   }
   return <Tag color="green">active</Tag>;
 };
@@ -60,22 +127,41 @@ const FieldSpecsPage: React.FC = () => {
   const [patterns, setPatterns] = useState<FieldPattern[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string>("Plant");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [deprecatingFieldId, setDeprecatingFieldId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [form] = Form.useForm<FieldSpecFormValues>();
 
   const isEditing = Boolean(editingFieldId);
+  const editingRecord = useMemo(
+    () => items.find(item => item.fieldId === editingFieldId) ?? null,
+    [items, editingFieldId],
+  );
   const selectedPatternKey = Form.useWatch("fieldPatternKey", form);
+  const watchedValueType = Form.useWatch("valueType", form);
+  const watchedLabel = Form.useWatch("label", form);
+  const watchedSemanticKind = Form.useWatch("semanticKind", form);
+  const watchedUnit = Form.useWatch("unit", form);
+  const watchedFormatMode = Form.useWatch("formatMode", form);
+  const watchedFormatPrecision = Form.useWatch("formatPrecision", form);
+  const watchedFormatStep = Form.useWatch("formatStep", form);
+  const watchedConstraintMin = Form.useWatch("constraintMin", form);
+  const watchedConstraintMax = Form.useWatch("constraintMax", form);
+  const isNumberField = watchedValueType === "number";
   const selectedPattern = useMemo(
     () => patterns.find(pattern => pattern.key === selectedPatternKey) ?? null,
     [patterns, selectedPatternKey],
   );
 
-  const load = async (entity: string) => {
+  const load = async (entity: string, status: StatusFilter) => {
     setLoading(true);
     try {
-      const next = await registryFieldSpecsService.list({ entity });
+      const next = await registryFieldSpecsService.list({
+        entity,
+        status: status === "all" ? undefined : status,
+      });
       setItems(next);
     } catch (error: any) {
       message.error(error?.message ?? "Failed to load field specs");
@@ -84,9 +170,52 @@ const FieldSpecsPage: React.FC = () => {
     }
   };
 
+  const handleDeprecate = useCallback(
+    async (record: RegistryFieldSpec) => {
+      setDeprecatingFieldId(record.fieldId);
+      try {
+        const usage = await registryFieldSpecsService.getUsage(record.fieldId);
+
+        Modal.confirm({
+          title: "Вывести Field Spec из оборота?",
+          content: (
+            <div>
+              <Text>
+                Поле <Text code>{record.fieldId}</Text> получит статус{" "}
+                <Text strong>DEPRECATED</Text> и будет скрыто из picker новых профилей.
+              </Text>
+              {usage.profileCount > 0 ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginTop: 12 }}
+                  message={`Используется в ${usage.profileCount} профиле(ах)`}
+                  description={usage.profileKeys.join(", ")}
+                />
+              ) : null}
+            </div>
+          ),
+          okText: "Вывести из оборота",
+          okButtonProps: { danger: true },
+          cancelText: "Отмена",
+          onOk: async () => {
+            await registryFieldSpecsService.deprecate(record.fieldId);
+            message.success(`Field spec ${record.fieldId} выведен из оборота`);
+            await load(selectedEntity, statusFilter);
+          },
+        });
+      } catch (error: any) {
+        message.error(error?.message ?? "Не удалось загрузить usage для field spec");
+      } finally {
+        setDeprecatingFieldId(null);
+      }
+    },
+    [selectedEntity, statusFilter],
+  );
+
   useEffect(() => {
-    load(selectedEntity);
-  }, [selectedEntity]);
+    load(selectedEntity, statusFilter);
+  }, [selectedEntity, statusFilter]);
 
   useEffect(() => {
     fieldPatternsService.list().then(setPatterns).catch(() => {
@@ -121,39 +250,54 @@ const FieldSpecsPage: React.FC = () => {
       {
         title: "",
         key: "actions",
-        width: 72,
+        width: 120,
         render: (_, record) => (
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingFieldId(record.fieldId);
-              form.setFieldsValue({
-                fieldId: record.fieldId,
-                entity: record.entity,
-                fieldPatternKey: record.fieldPatternKey ?? undefined,
-                label: record.label,
-                valueType: record.valueType,
-                semanticKind: record.semanticKind,
-                canonicalPath: record.canonicalPath,
-                unit: record.unit ?? "",
-                status: record.status,
-                includeInCurrent: record.includeInCurrent,
-                required: record.required,
-                formatJson: record.formatJson
-                  ? JSON.stringify(record.formatJson, null, 2)
-                  : "",
-                constraintsJson: record.constraintsJson
-                  ? JSON.stringify(record.constraintsJson, null, 2)
-                  : "",
-              });
-              setModalOpen(true);
-            }}
-          />
+          <Space size="small">
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setEditingFieldId(record.fieldId);
+                form.setFieldsValue({
+                  fieldId: record.fieldId,
+                  entity: record.entity,
+                  fieldPatternKey: record.fieldPatternKey ?? undefined,
+                  label: record.label,
+                  valueType: record.valueType,
+                  semanticKind: record.semanticKind,
+                  canonicalPath: record.canonicalPath,
+                  unit: record.unit ?? "",
+                  includeInCurrent: record.includeInCurrent,
+                  required: record.required,
+                  ...parseFormatJson(record.formatJson),
+                  ...parseConstraintsJson(record.constraintsJson),
+                  formatJson:
+                    record.valueType === "number"
+                      ? ""
+                      : formatJsonToString(record.formatJson ?? undefined),
+                  constraintsJson:
+                    record.valueType === "number"
+                      ? ""
+                      : formatJsonToString(record.constraintsJson ?? undefined),
+                });
+                setModalOpen(true);
+              }}
+            />
+            {record.status === "active" ? (
+              <Button
+                size="small"
+                danger
+                icon={<MinusCircleOutlined />}
+                loading={deprecatingFieldId === record.fieldId}
+                onClick={() => handleDeprecate(record)}
+                title="Вывести из оборота"
+              />
+            ) : null}
+          </Space>
         ),
       },
     ],
-    [form],
+    [deprecatingFieldId, form, handleDeprecate],
   );
 
   const openCreateModal = () => {
@@ -164,9 +308,13 @@ const FieldSpecsPage: React.FC = () => {
       fieldPatternKey: undefined,
       semanticKind: "generic",
       valueType: "number",
-      status: "active",
       includeInCurrent: false,
       required: false,
+      formatMode: undefined,
+      formatPrecision: undefined,
+      formatStep: undefined,
+      constraintMin: undefined,
+      constraintMax: undefined,
       formatJson: "",
       constraintsJson: "",
     });
@@ -183,6 +331,7 @@ const FieldSpecsPage: React.FC = () => {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
+      const { formatJson, constraintsJson } = serializeFormatAndConstraints(values);
 
       if (isEditing && editingFieldId) {
         await registryFieldSpecsService.upsert({
@@ -194,11 +343,11 @@ const FieldSpecsPage: React.FC = () => {
           canonicalPath: values.canonicalPath,
           unit: values.unit?.trim() || undefined,
           fieldPatternKey: values.fieldPatternKey,
-          status: values.status,
+          status: editingRecord?.status ?? "active",
           includeInCurrent: values.includeInCurrent,
           required: values.required,
-          formatJson: values.formatJson?.trim() || undefined,
-          constraintsJson: values.constraintsJson?.trim() || undefined,
+          formatJson,
+          constraintsJson,
         });
         message.success("Field spec updated");
       } else {
@@ -211,16 +360,16 @@ const FieldSpecsPage: React.FC = () => {
           canonicalPath: values.canonicalPath,
           unit: values.unit?.trim() || undefined,
           fieldPatternKey: values.fieldPatternKey,
-          status: values.status,
+          status: "active",
           includeInCurrent: values.includeInCurrent,
           required: values.required,
-          formatJson: values.formatJson?.trim() || undefined,
-          constraintsJson: values.constraintsJson?.trim() || undefined,
+          formatJson,
+          constraintsJson,
         });
         message.success("Field spec created");
       }
       closeModal();
-      await load(selectedEntity);
+      await load(selectedEntity, statusFilter);
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(error?.message ?? "Failed to save field spec");
@@ -242,7 +391,17 @@ const FieldSpecsPage: React.FC = () => {
           options={[...ENTITY_OPTIONS]}
           onChange={value => setSelectedEntity(value)}
         />
-        <Button icon={<ReloadOutlined />} onClick={() => load(selectedEntity)} loading={loading}>
+        <Select
+          style={{ minWidth: 160 }}
+          value={statusFilter}
+          options={STATUS_FILTER_OPTIONS}
+          onChange={value => setStatusFilter(value)}
+        />
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={() => load(selectedEntity, statusFilter)}
+          loading={loading}
+        >
           Refresh
         </Button>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -262,8 +421,19 @@ const FieldSpecsPage: React.FC = () => {
         onOk={submit}
         okText={isEditing ? "Save" : "Create"}
         confirmLoading={submitting}
+        width={820}
+        style={{ top: 24 }}
       >
         <Form form={form} layout="vertical" onFinish={submit} initialValues={{ entity: "Plant" }}>
+          {editingRecord?.status === "deprecated" ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="Field Spec выведен из оборота"
+              description="Метаданные можно править; возврат в активный каталог — через seed или backend upsert со status active."
+            />
+          ) : null}
           <Form.Item
             name="fieldId"
             label="Field ID"
@@ -299,12 +469,22 @@ const FieldSpecsPage: React.FC = () => {
                 if (!pattern) {
                   return;
                 }
+                const formatPayload = parseJsonPayload(pattern.formatJson);
+                const constraintsPayload = parseJsonPayload(pattern.constraintsJson);
                 form.setFieldsValue({
                   valueType: pattern.valueType,
                   semanticKind: pattern.semanticKind,
                   unit: pattern.canonicalUnit ?? "",
-                  formatJson: pattern.formatJson ?? "",
-                  constraintsJson: pattern.constraintsJson ?? "",
+                  ...parseFormatJson(formatPayload),
+                  ...parseConstraintsJson(constraintsPayload),
+                  formatJson:
+                    pattern.valueType === "number"
+                      ? ""
+                      : (pattern.formatJson ?? ""),
+                  constraintsJson:
+                    pattern.valueType === "number"
+                      ? ""
+                      : (pattern.constraintsJson ?? ""),
                 });
               }}
             />
@@ -396,51 +576,82 @@ const FieldSpecsPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="includeInCurrent" valuePropName="checked">
-            <Checkbox>Include in current snapshot</Checkbox>
+            <Checkbox>
+              Include in current snapshot{" "}
+              <Tooltip title="При includeInCurrent=true поле может попасть в materialized current через profile mapping и snapshot policy.">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </Checkbox>
           </Form.Item>
 
-          <Form.Item name="status" label="Status">
-            <Select
-              options={[
-                { value: "active", label: "active" },
-                { value: "deprecated", label: "deprecated" },
+          {isNumberField ? (
+            <>
+              <Divider style={{ margin: "12px 0" }} />
+              <FieldSpecNumericSection />
+              <FieldSpecControllerPreview
+                label={watchedLabel ?? ""}
+                semanticKind={watchedSemanticKind}
+                unit={watchedUnit}
+                pattern={selectedPattern}
+                format={{
+                  formatMode: watchedFormatMode,
+                  formatPrecision: watchedFormatPrecision,
+                  formatStep: watchedFormatStep,
+                }}
+                constraints={{
+                  constraintMin: watchedConstraintMin,
+                  constraintMax: watchedConstraintMax,
+                }}
+              />
+            </>
+          ) : (
+            <Collapse
+              ghost
+              style={{ marginBottom: 8 }}
+              items={[
+                {
+                  key: "advanced-json",
+                  label: "Advanced JSON (non-number types)",
+                  children: (
+                    <>
+                      <Form.Item
+                        name="formatJson"
+                        label="Format JSON"
+                        rules={[
+                          {
+                            validator: async (_, value: string | undefined) => {
+                              const payload = value?.trim();
+                              if (!payload) return;
+                              JSON.parse(payload);
+                            },
+                            message: "Format JSON must be valid JSON",
+                          },
+                        ]}
+                      >
+                        <Input.TextArea rows={3} placeholder='e.g. {"mode":"decimal"}' />
+                      </Form.Item>
+                      <Form.Item
+                        name="constraintsJson"
+                        label="Constraints JSON"
+                        rules={[
+                          {
+                            validator: async (_, value: string | undefined) => {
+                              const payload = value?.trim();
+                              if (!payload) return;
+                              JSON.parse(payload);
+                            },
+                            message: "Constraints JSON must be valid JSON",
+                          },
+                        ]}
+                      >
+                        <Input.TextArea rows={3} placeholder='e.g. {"min":0,"max":14}' />
+                      </Form.Item>
+                    </>
+                  ),
+                },
               ]}
             />
-          </Form.Item>
-
-          <Form.Item
-            name="formatJson"
-            label="Format JSON"
-            rules={[
-              {
-                validator: async (_, value: string | undefined) => {
-                  const payload = value?.trim();
-                  if (!payload) return;
-                  JSON.parse(payload);
-                },
-                message: "Format JSON must be valid JSON",
-              },
-            ]}
-          >
-            <Input.TextArea rows={4} placeholder='e.g. {"mode":"decimal","precision":1,"step":0.1}' />
-          </Form.Item>
-
-          <Form.Item
-            name="constraintsJson"
-            label="Constraints JSON"
-            rules={[
-              {
-                validator: async (_, value: string | undefined) => {
-                  const payload = value?.trim();
-                  if (!payload) return;
-                  JSON.parse(payload);
-                },
-                message: "Constraints JSON must be valid JSON",
-              },
-            ]}
-          >
-            <Input.TextArea rows={4} placeholder='e.g. {"min":0,"max":14}' />
-          </Form.Item>
+          )}
         </Form>
       </Modal>
     </div>

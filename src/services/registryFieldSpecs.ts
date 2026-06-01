@@ -36,6 +36,13 @@ export interface RegistryFieldSpec {
   updatedAt: string;
 }
 
+export interface RegistryFieldSpecUsage {
+  fieldId: string;
+  profileKeys: string[];
+  profileCount: number;
+  isDeprecated: boolean;
+}
+
 type TUpsertInput = {
   fieldId: string;
   entity: string;
@@ -137,6 +144,67 @@ export const registryFieldSpecsService = {
     });
 
     return resp.upsertRegistryFieldSpec;
+  },
+
+  getUsage: async (fieldId: string) => {
+    const query = `
+      query RegistryFieldSpecUsage($fieldId: String!) {
+        registryFieldSpecUsage(fieldId: $fieldId) {
+          fieldId
+          profileKeys
+          profileCount
+          isDeprecated
+        }
+      }
+    `;
+
+    const resp = await graphqlClient.request<
+      { registryFieldSpecUsage: RegistryFieldSpecUsage },
+      { fieldId: string }
+    >({
+      query,
+      variables: { fieldId },
+      operationName: "RegistryFieldSpecUsage",
+    });
+
+    return resp.registryFieldSpecUsage;
+  },
+
+  deprecate: async (fieldId: string) => {
+    const query = `
+      mutation DeprecateRegistryFieldSpec($fieldId: String!) {
+        deprecateRegistryFieldSpec(fieldId: $fieldId) {
+          id
+          fieldId
+          entity
+          label
+          valueType
+          semanticKind
+          unit
+          canonicalPath
+          required
+          formatJson
+          constraintsJson
+          fieldPatternKey
+          includeInCurrent
+          status
+          version
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const resp = await graphqlClient.request<
+      { deprecateRegistryFieldSpec: RegistryFieldSpec },
+      { fieldId: string }
+    >({
+      query,
+      variables: { fieldId },
+      operationName: "DeprecateRegistryFieldSpec",
+    });
+
+    return resp.deprecateRegistryFieldSpec;
   },
 };
 
