@@ -23,6 +23,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@growing/admin-shell": "file:../packages/admin-shell",
     "@growing/content-markdown": "file:../packages/content-markdown",
     "@growing/contracts": "file:../packages/contracts",
     "@growing/ui": "file:../packages/ui",

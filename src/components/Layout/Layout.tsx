@@ -32,8 +32,10 @@ import {
   DeploymentUnitOutlined,
   DatabaseOutlined,
   ToolOutlined,
+  LinkOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
+import { REACT_TO_VUE_MENU, crossAppLinkHref } from "@growing/admin-shell";
 import "./Layout.css";
 
 const { Header, Sider, Content } = AntLayout;
@@ -48,7 +50,8 @@ type SectionKey =
   | "entities"
   | "content"
   | "media"
-  | "admin-section";
+  | "admin-section"
+  | "admin-vue";
 
 type MenuLeafItem = NonNullable<MenuProps["items"]>[number];
 const SECTION_MENU_KEYS = [
@@ -58,6 +61,7 @@ const SECTION_MENU_KEYS = [
   "section-content",
   "section-media",
   "section-admin-section",
+  "section-admin-vue",
 ] as const;
 
 const SIDEBAR_MIN_WIDTH = 220;
@@ -85,6 +89,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       content: false,
       media: false,
       "admin-section": false,
+      "admin-vue": false,
     },
   );
 
@@ -243,6 +248,20 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     </span>
   );
 
+  const createExternalMenuItemLabel = (title: string, href: string) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) =>
+        handleOpenSeparatelyMouseDown(event, () => window.open(href, "_blank", "noopener,noreferrer"))
+      }
+    >
+      {title}
+    </a>
+  );
+
   const createSectionLabel = (title: string, sectionKey: SectionKey) => {
     const isHidden = hiddenSections[sectionKey];
     const toggleTitle = isHidden ? "Show section items" : "Hide section items";
@@ -336,6 +355,11 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           icon: <TagsOutlined />,
           label: createMenuItemLabel("Brands", "/brands"),
         },
+        {
+          key: "/entities/taxonomy",
+          icon: <TagsOutlined />,
+          label: createMenuItemLabel("Справочник таксономии", "/entities/taxonomy"),
+        },
       ],
     },
     {
@@ -413,6 +437,20 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
         },
       ],
     },
+    {
+      key: "admin-vue",
+      title: REACT_TO_VUE_MENU.title,
+      menuKey: "section-admin-vue",
+      icon: <LinkOutlined />,
+      items: REACT_TO_VUE_MENU.links.map((link) => ({
+        key: `vue-ext-${link.key}`,
+        icon: <LinkOutlined />,
+        label: createExternalMenuItemLabel(
+          link.label,
+          crossAppLinkHref(link),
+        ),
+      })),
+    },
   ];
 
   const menuItems: MenuProps["items"] = useMemo(() => {
@@ -472,6 +510,12 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
     }
     if (location.pathname.startsWith("/brands")) {
       return "/brands";
+    }
+    if (
+      location.pathname.startsWith("/entities/taxonomy") ||
+      location.pathname.startsWith("/content/taxonomy")
+    ) {
+      return "/entities/taxonomy";
     }
     if (location.pathname.startsWith("/content/guides")) {
       return "/content/guides";
@@ -571,6 +615,9 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           onClick={({ key }) => {
             if (openedSeparatelyRef.current) {
               openedSeparatelyRef.current = false;
+              return;
+            }
+            if (typeof key === "string" && key.startsWith("vue-ext-")) {
               return;
             }
             if (typeof key === "string" && key.startsWith("/")) {

@@ -44,6 +44,7 @@ import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathReg
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import FieldSpecsPage from "@/pages/Primitives/PrimitivesPage";
 import FieldPatternsPage from "@/pages/FieldPatterns/FieldPatternsPage";
+import { TaxonomyDirectoryPage } from "@/pages/Entities";
 import {
   GuidesPage,
   GuideCreatePage,
@@ -223,6 +224,9 @@ const App: React.FC = () => {
                         />
                         <Route path="/media" element={<MediaLibrary />} />
                         <Route path="/content/guides" element={<GuidesPage />} />
+                        <Route path="/entities/taxonomy" element={<TaxonomyDirectoryPage />} />
+                        <Route path="/content/taxonomy" element={<TaxonomyDirectoryPage />} />
+                        <Route path="/content/taxonomy-tags" element={<TaxonomyDirectoryPage />} />
                         <Route
                           path="/content/guides/create"
                           element={<GuideCreatePage />}

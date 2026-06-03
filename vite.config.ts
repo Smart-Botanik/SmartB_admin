@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "@growing/admin-shell": path.resolve(
+          __dirname,
+          "../packages/admin-shell/src/index.ts",
+        ),
         "@growing/content-markdown": path.resolve(
           __dirname,
           "../packages/content-markdown/src/index.ts",

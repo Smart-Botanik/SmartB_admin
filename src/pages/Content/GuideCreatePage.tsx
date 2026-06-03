@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+import { formatHashtagsLine } from "@growing/content-markdown";
 
 import { useNavigate } from "react-router-dom";
 
@@ -24,8 +26,7 @@ import {
 
 } from "antd";
 
-
-
+import { ContentTaxonomyFields } from "@/components/Content/ContentTaxonomyFields";
 import { GuideContentEditor } from "@/components/Content/GuideContentEditor";
 
 import { MediaUpload } from "@/components/Media/MediaUpload/MediaUpload";
@@ -34,11 +35,11 @@ import { contentService } from "@/services/content";
 
 import type { MediaUploadResponse } from "@/services/media";
 
-import { CROP_KIND_OPTIONS, type CropKind } from "@/types/content";
+import { CROP_KIND_OPTIONS, type TaxonomyTag, type CropKind } from "@/types/content";
 
 
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 
 
@@ -100,7 +101,35 @@ const GuideCreatePage: React.FC = () => {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const [taxonomyTagIds, setTaxonomyTagIds] = useState<string[]>([]);
 
+  const [taxonomyTags, setTaxonomyTags] = useState<TaxonomyTag[]>([]);
+
+  const watchedCropKind = Form.useWatch("cropKind", form) as CropKind | undefined;
+
+  useEffect(() => {
+    setTaxonomyTagIds([]);
+  }, [watchedCropKind]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void contentService.listTaxonomyTags({ limit: 200, offset: 0 }).then(page => {
+      if (!cancelled) {
+        setTaxonomyTags(page.items);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const telegramHashtagPreview = useMemo(() => {
+    const terms = taxonomyTagIds
+      .map(tagId => taxonomyTags.find(tag => tag.id === tagId))
+      .filter((tag): tag is TaxonomyTag => Boolean(tag))
+      .map(tag => ({ key: tag.key, label: tag.label, sortOrder: tag.sortOrder }));
+    return formatHashtagsLine(terms, { excludeInText: bodyTelegramMd }) || null;
+  }, [taxonomyTagIds, taxonomyTags, bodyTelegramMd]);
 
   const onFinish = async (values: FormValues) => {
 
@@ -139,6 +168,8 @@ const GuideCreatePage: React.FC = () => {
         seoDescription: values.seoDescription?.trim() || null,
 
         sortOrder: values.sortOrder ?? 0,
+
+        taxonomyTagIds,
 
       });
 
@@ -189,6 +220,22 @@ const GuideCreatePage: React.FC = () => {
             <Select options={CROP_KIND_OPTIONS} />
 
           </Form.Item>
+
+          <Form.Item label="Таксономия (культура → подтег)">
+            <ContentTaxonomyFields
+              cropKind={watchedCropKind ?? "TOMATO"}
+              tags={taxonomyTags}
+              value={taxonomyTagIds}
+              onChange={setTaxonomyTagIds}
+              disabled={submitting}
+            />
+          </Form.Item>
+
+          {telegramHashtagPreview ? (
+            <Form.Item label="Хештеги в Telegram (авто)">
+              <Text type="secondary">{telegramHashtagPreview}</Text>
+            </Form.Item>
+          ) : null}
 
           <Form.Item name="title" label="Заголовок" rules={[{ required: true }]}>
 

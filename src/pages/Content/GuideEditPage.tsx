@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+import { formatHashtagsLine } from "@growing/content-markdown";
 
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -30,6 +32,7 @@ import {
 
 
 
+import { ContentTaxonomyFields } from "@/components/Content/ContentTaxonomyFields";
 import { GuideContentEditor } from "@/components/Content/GuideContentEditor";
 
 import { MediaUpload } from "@/components/Media/MediaUpload/MediaUpload";
@@ -43,6 +46,8 @@ import {
   CONTENT_STATUS_OPTIONS,
 
   CROP_KIND_OPTIONS,
+
+  type TaxonomyTag,
 
   type CropGuide,
 
@@ -96,6 +101,12 @@ const GuideEditPage: React.FC = () => {
 
   const [mediaFiles, setMediaFiles] = useState<MediaUploadResponse[]>([]);
 
+  const [taxonomyTagIds, setTaxonomyTagIds] = useState<string[]>([]);
+
+  const [taxonomyTags, setTaxonomyTags] = useState<TaxonomyTag[]>([]);
+
+  const watchedCropKind = Form.useWatch("cropKind", form) as CropKind | undefined;
+
   const [loading, setLoading] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
@@ -129,6 +140,8 @@ const GuideEditPage: React.FC = () => {
         }
 
         setGuide(item);
+
+        setTaxonomyTagIds(item.taxonomyTags?.map(tag => tag.id) ?? []);
 
         setBodySiteMd(item.bodySiteMd ?? "");
 
@@ -182,7 +195,40 @@ const GuideEditPage: React.FC = () => {
 
   }, [form, id, navigate]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadTags = async () => {
+      try {
+        const page = await contentService.listTaxonomyTags({ limit: 200, offset: 0 });
+        if (!cancelled) {
+          setTaxonomyTags(page.items);
+        }
+      } catch {
+        if (!cancelled) {
+          setTaxonomyTags([]);
+        }
+      }
+    };
+    void loadTags();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
+  const telegramHashtagPreview = useMemo(() => {
+    const terms = taxonomyTagIds
+      .map(tagId => taxonomyTags.find(tag => tag.id === tagId))
+      .filter((tag): tag is TaxonomyTag => Boolean(tag))
+      .map(tag => ({
+        key: tag.key,
+        label: tag.label,
+        sortOrder: tag.sortOrder,
+      }));
+    const line = formatHashtagsLine(terms, {
+      excludeInText: `${bodyTelegramMd}\n${bodySiteMd}`,
+    });
+    return line || null;
+  }, [taxonomyTagIds, taxonomyTags, bodyTelegramMd, bodySiteMd]);
 
   const onFinish = async (values: FormValues) => {
 
@@ -222,6 +268,8 @@ const GuideEditPage: React.FC = () => {
 
         sortOrder: values.sortOrder ?? 0,
 
+        taxonomyTagIds,
+
       });
 
       message.success("Сохранено");
@@ -241,6 +289,24 @@ const GuideEditPage: React.FC = () => {
   };
 
 
+
+  const handlePublishToTelegram = async () => {
+    if (!guide) return;
+    try {
+      const result = await contentService.publishGuideToTelegram(guide.id);
+      if (!result.success) {
+        message.error(result.message ?? "Не удалось отправить в Telegram");
+        return;
+      }
+      message.success(result.message ?? "Отправлено в Telegram");
+      const refreshed = await contentService.getGuide(id);
+      setGuide(refreshed);
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Ошибка отправки в Telegram",
+      );
+    }
+  };
 
   const handlePublishToggle = async () => {
 
@@ -344,6 +410,32 @@ const GuideEditPage: React.FC = () => {
 
             </Button>
 
+            <Button onClick={() => void handlePublishToTelegram()}>
+
+              Отправить в Telegram
+
+            </Button>
+
+            {guide.telegramPostUrl ? (
+
+              <Button href={guide.telegramPostUrl} target="_blank">
+
+                Пост в Telegram
+
+              </Button>
+
+            ) : null}
+
+            {guide.telegramPublishedAt ? (
+
+              <Text type="secondary">
+
+                TG: {new Date(guide.telegramPublishedAt).toLocaleString("ru-RU")}
+
+              </Text>
+
+            ) : null}
+
             <Popconfirm title="Удалить руководство?" onConfirm={() => void handleDelete()}>
 
               <Button danger>Удалить</Button>
@@ -365,6 +457,27 @@ const GuideEditPage: React.FC = () => {
             <Select options={CROP_KIND_OPTIONS} />
 
           </Form.Item>
+
+          <Form.Item label="Таксономия (культура → подтег)">
+            <ContentTaxonomyFields
+              cropKind={watchedCropKind ?? guide?.cropKind ?? "TOMATO"}
+              tags={taxonomyTags}
+              value={taxonomyTagIds}
+              onChange={setTaxonomyTagIds}
+              disabled={submitting}
+            />
+          </Form.Item>
+
+          {telegramHashtagPreview ? (
+            <Form.Item label="Хештеги в Telegram (авто)">
+              <Text type="secondary" style={{ display: "block" }}>
+                {telegramHashtagPreview}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Добавятся в конец поста при «Отправить в Telegram», если их ещё нет в тексте.
+              </Text>
+            </Form.Item>
+          ) : null}
 
           <Form.Item name="title" label="Заголовок" rules={[{ required: true }]}>
 
