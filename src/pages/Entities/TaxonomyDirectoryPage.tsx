@@ -36,7 +36,6 @@ type TagFormValues = {
   key: string;
   namespace: TaxonomyTagNamespace;
   label: string;
-  sortOrder?: number;
 };
 
 type ScopeFormValues = {
@@ -166,7 +165,6 @@ const TaxonomyDirectoryPage: React.FC = () => {
     setCreateParentId(parentId);
     tagForm.resetFields();
     tagForm.setFieldsValue({
-      sortOrder: 0,
       namespace: parentId ? "CROP_VARIANT" : activeScopeKey === "crop" ? "CROP" : "TOPIC",
     });
     setTagModalOpen(true);
@@ -185,7 +183,7 @@ const TaxonomyDirectoryPage: React.FC = () => {
         key: fullKey,
         namespace: values.namespace,
         label: values.label.trim(),
-        sortOrder: values.sortOrder ?? 0,
+        sortOrder: 0,
         parentId: createParentId,
       });
       message.success("Тег создан");
@@ -257,6 +255,12 @@ const TaxonomyDirectoryPage: React.FC = () => {
     { title: "Название", dataIndex: "label", key: "label" },
     { title: "Ключ", dataIndex: "key", key: "key", render: key => <Text code>{key}</Text> },
     {
+      title: "Тип",
+      dataIndex: "namespace",
+      key: "namespace",
+      render: (ns: TaxonomyTagNamespace) => <Tag>{taxonomyTagNamespaceLabel(ns)}</Tag>,
+    },
+    {
       title: "Действия",
       key: "actions",
       width: 280,
@@ -315,7 +319,6 @@ const TaxonomyDirectoryPage: React.FC = () => {
       key: "namespace",
       render: ns => <Tag>{taxonomyTagNamespaceLabel(ns)}</Tag>,
     },
-    { title: "Порядок", dataIndex: "sortOrder", key: "sortOrder", width: 90 },
     {
       title: "",
       key: "actions",
@@ -323,7 +326,7 @@ const TaxonomyDirectoryPage: React.FC = () => {
       render: (_: unknown, record: TaxonomyTag) => (
         <Space size="small">
           <Button size="small" type="primary" onClick={() => openAssignGroup(record)}>
-            Назначить группу
+            {activeScopeKey === "crop" ? "Привязать к культуре" : "Назначить группу"}
           </Button>
           <Button
             size="small"
@@ -348,7 +351,12 @@ const TaxonomyDirectoryPage: React.FC = () => {
   const childColumns: ColumnsType<TaxonomyTag> = [
     { title: "Подпись", dataIndex: "label", key: "label" },
     { title: "Ключ", dataIndex: "key", key: "key" },
-    { title: "Порядок", dataIndex: "sortOrder", key: "sortOrder", width: 90 },
+    {
+      title: "Тип",
+      dataIndex: "namespace",
+      key: "namespace",
+      render: ns => <Tag>{taxonomyTagNamespaceLabel(ns)}</Tag>,
+    },
     {
       title: "",
       key: "actions",
@@ -469,9 +477,6 @@ const TaxonomyDirectoryPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="label" label="Подпись" rules={[{ required: true }]}>
             <Input />
-          </Form.Item>
-          <Form.Item name="sortOrder" label="Порядок">
-            <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
         </Form>
       </Modal>

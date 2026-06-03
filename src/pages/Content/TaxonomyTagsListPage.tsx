@@ -5,7 +5,6 @@ import {
   Button,
   Form,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Select,
@@ -30,7 +29,6 @@ type TagFormValues = {
   key: string;
   namespace: TaxonomyTagNamespace;
   label: string;
-  sortOrder?: number;
   parentId?: string | null;
   cropKind?: CropKind | null;
   variantAxis?: string | null;
@@ -72,7 +70,7 @@ const TaxonomyTagsListPage: React.FC = () => {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ sortOrder: 0, namespace: "CROP" });
+    form.setFieldsValue({ namespace: "CROP" });
     setModalOpen(true);
   };
 
@@ -82,7 +80,6 @@ const TaxonomyTagsListPage: React.FC = () => {
       key: tag.key,
       namespace: tag.namespace,
       label: tag.label,
-      sortOrder: tag.sortOrder,
       parentId: tag.parentId,
       cropKind: tag.cropKind,
       variantAxis: tag.variantAxis,
@@ -97,7 +94,7 @@ const TaxonomyTagsListPage: React.FC = () => {
           key: values.key.trim(),
           namespace: values.namespace,
           label: values.label.trim(),
-          sortOrder: values.sortOrder ?? 0,
+          sortOrder: 0,
           parentId: values.parentId ?? null,
           cropKind: values.cropKind ?? null,
           variantAxis: values.variantAxis?.trim() || null,
@@ -108,7 +105,7 @@ const TaxonomyTagsListPage: React.FC = () => {
           key: values.key.trim(),
           namespace: values.namespace,
           label: values.label.trim(),
-          sortOrder: values.sortOrder ?? 0,
+          sortOrder: 0,
           parentId: values.parentId ?? null,
           cropKind: values.cropKind ?? null,
           variantAxis: values.variantAxis?.trim() || null,
@@ -163,7 +160,6 @@ const TaxonomyTagsListPage: React.FC = () => {
             render: (_: unknown, record: TaxonomyTag) =>
               record.parent?.label ?? record.parentId ?? "—",
           },
-          { title: "Порядок", dataIndex: "sortOrder", key: "sortOrder", width: 90 },
           {
             title: "",
             key: "actions",
@@ -243,9 +239,6 @@ const TaxonomyTagsListPage: React.FC = () => {
               <Input placeholder="growth_habit / pollination" />
             </Form.Item>
           ) : null}
-          <Form.Item name="sortOrder" label="Порядок сортировки">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
         </Form>
       </Modal>
     </Space>

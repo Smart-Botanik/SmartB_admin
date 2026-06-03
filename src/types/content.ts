@@ -95,8 +95,8 @@ export const TAXONOMY_TAG_NAMESPACE_OPTIONS: Array<{
   value: TaxonomyTagNamespace;
   label: string;
 }> = [
-  { value: "CROP", label: "Культура" },
-  { value: "CROP_VARIANT", label: "Подвид / тип" },
+  { value: "CROP", label: "Культура (crop)" },
+  { value: "CROP_VARIANT", label: "Подвид / тип (под crop)" },
   { value: "TOPIC", label: "Тема" },
   { value: "PRODUCT_USE", label: "Применение продукта" },
 ];
