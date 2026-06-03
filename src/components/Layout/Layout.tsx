@@ -35,7 +35,11 @@ import {
   LinkOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { REACT_TO_VUE_MENU, crossAppLinkHref } from "@growing/admin-shell";
+import {
+  ADMIN_VUE_TAXONOMY_PATH,
+  REACT_TO_VUE_MENU,
+  crossAppLinkHref,
+} from "@growing/admin-shell";
 import "./Layout.css";
 
 const { Header, Sider, Content } = AntLayout;
@@ -356,9 +360,17 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           label: createMenuItemLabel("Brands", "/brands"),
         },
         {
-          key: "/entities/taxonomy",
-          icon: <TagsOutlined />,
-          label: createMenuItemLabel("Справочник таксономии", "/entities/taxonomy"),
+          key: "vue-ext-taxonomy",
+          icon: <LinkOutlined />,
+          label: createExternalMenuItemLabel(
+            "Справочник таксономии (Vue)",
+            crossAppLinkHref({
+              key: "vue-taxonomy",
+              label: "Справочник таксономии",
+              path: ADMIN_VUE_TAXONOMY_PATH,
+              app: "vue",
+            }),
+          ),
         },
       ],
     },
@@ -515,7 +527,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       location.pathname.startsWith("/entities/taxonomy") ||
       location.pathname.startsWith("/content/taxonomy")
     ) {
-      return "/entities/taxonomy";
+      return "vue-ext-taxonomy";
     }
     if (location.pathname.startsWith("/content/guides")) {
       return "/content/guides";

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { ADMIN_VUE_TAXONOMY_PATH, crossAppLinkHref } from "@growing/admin-shell";
 
 import {
   Button,
@@ -35,6 +35,13 @@ type TagFormValues = {
   cropKind?: CropKind | null;
   variantAxis?: string | null;
 };
+
+const vueTaxonomyHref = crossAppLinkHref({
+  key: "vue-taxonomy",
+  label: "Справочник таксономии",
+  path: ADMIN_VUE_TAXONOMY_PATH,
+  app: "vue",
+});
 
 const TaxonomyTagsListPage: React.FC = () => {
   const [rows, setRows] = useState<TaxonomyTag[]>([]);
@@ -127,7 +134,10 @@ const TaxonomyTagsListPage: React.FC = () => {
       </Space>
       <Text type="secondary">
         Плоский список всех меток. Иерархию культур и подтегов настраивайте в{" "}
-        <Link to="/content/taxonomy">таксономии</Link>. Ключи: <code>crop.tomato</code>,{" "}
+        <a href={vueTaxonomyHref} target="_blank" rel="noopener noreferrer">
+          справочнике таксономии (Vue)
+        </a>
+        . Ключи: <code>crop.tomato</code>,{" "}
         <code>crop.tomato.determinate</code>.
       </Text>
 
