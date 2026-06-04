@@ -363,7 +363,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           key: "vue-ext-taxonomy",
           icon: <LinkOutlined />,
           label: createExternalMenuItemLabel(
-            "Справочник таксономии (Vue)",
+            "Справочник таксономии",
             crossAppLinkHref({
               key: "vue-taxonomy",
               label: "Справочник таксономии",
@@ -527,6 +527,9 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       location.pathname.startsWith("/entities/taxonomy") ||
       location.pathname.startsWith("/content/taxonomy")
     ) {
+      return "vue-ext-taxonomy";
+    }
+    if (location.pathname.startsWith("/content/taxonomy-tags")) {
       return "vue-ext-taxonomy";
     }
     if (location.pathname.startsWith("/content/guides")) {

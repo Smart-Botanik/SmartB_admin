@@ -9,9 +9,7 @@ const vueTaxonomyHref = crossAppLinkHref({
   app: "vue",
 });
 
-/**
- * Phase 1: taxonomy UI lives in admin-vue; React routes redirect here.
- */
+/** Управление таксономией — только admin-vue; legacy React URL редирект сюда. */
 const RedirectToVueTaxonomy: React.FC = () => {
   useEffect(() => {
     window.location.replace(vueTaxonomyHref);

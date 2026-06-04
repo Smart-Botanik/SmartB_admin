@@ -45,7 +45,6 @@ import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import FieldSpecsPage from "@/pages/Primitives/PrimitivesPage";
 import FieldPatternsPage from "@/pages/FieldPatterns/FieldPatternsPage";
 import { RedirectToVueTaxonomy } from "@/pages/RedirectToVueAdmin";
-import { TaxonomyTagsListPage } from "@/pages/Content";
 import {
   GuidesPage,
   GuideCreatePage,
@@ -227,7 +226,7 @@ const App: React.FC = () => {
                         <Route path="/content/guides" element={<GuidesPage />} />
                         <Route path="/entities/taxonomy" element={<RedirectToVueTaxonomy />} />
                         <Route path="/content/taxonomy" element={<RedirectToVueTaxonomy />} />
-                        <Route path="/content/taxonomy-tags" element={<TaxonomyTagsListPage />} />
+                        <Route path="/content/taxonomy-tags" element={<RedirectToVueTaxonomy />} />
                         <Route
                           path="/content/guides/create"
                           element={<GuideCreatePage />}
