@@ -6,6 +6,8 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import {
 
+  Alert,
+
   Button,
 
   Card,
@@ -38,6 +40,7 @@ import { GuideContentEditor } from "@/components/Content/GuideContentEditor";
 import { MediaUpload } from "@/components/Media/MediaUpload/MediaUpload";
 
 import { contentService } from "@/services/content";
+import { telegramService } from "@/services/telegram";
 
 import type { MediaUploadResponse } from "@/services/media";
 
@@ -54,6 +57,8 @@ import {
   type CropKind,
 
 } from "@/types/content";
+
+import type { TelegramChannel } from "@/types/telegram";
 
 
 
@@ -110,6 +115,12 @@ const GuideEditPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
+
+  const [telegramChannels, setTelegramChannels] = useState<TelegramChannel[]>([]);
+
+  const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>();
+
+  const [publishingTelegram, setPublishingTelegram] = useState(false);
 
 
 
@@ -215,6 +226,36 @@ const GuideEditPage: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTelegramChannels = async () => {
+      try {
+        const [channels, defaultChannel] = await Promise.all([
+          telegramService.listActiveChannels(),
+          telegramService.getDefaultChannel(),
+        ]);
+        if (cancelled) return;
+
+        setTelegramChannels(channels);
+        const initial =
+          defaultChannel?.id ??
+          channels.find(channel => channel.isDefault)?.id ??
+          channels[0]?.id;
+        setSelectedChannelId(initial);
+      } catch {
+        if (!cancelled) {
+          setTelegramChannels([]);
+        }
+      }
+    };
+
+    void loadTelegramChannels();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const telegramHashtagPreview = useMemo(() => {
     const terms = taxonomyTagIds
       .map(tagId => taxonomyTags.find(tag => tag.id === tagId))
@@ -292,19 +333,29 @@ const GuideEditPage: React.FC = () => {
 
   const handlePublishToTelegram = async () => {
     if (!guide) return;
+    if (!selectedChannelId) {
+      message.error("Выберите Telegram-канал или настройте канал в Сообщество → Telegram");
+      return;
+    }
+
+    setPublishingTelegram(true);
     try {
-      const result = await contentService.publishGuideToTelegram(guide.id);
+      const result = await contentService.publishGuideToTelegram(
+        guide.id,
+        selectedChannelId,
+      );
       if (!result.success) {
         message.error(result.message ?? "Не удалось отправить в Telegram");
         return;
       }
       message.success(result.message ?? "Отправлено в Telegram");
-      const refreshed = await contentService.getGuide(id);
-      setGuide(refreshed);
+      setGuide(result.cropGuide);
     } catch (error) {
       message.error(
         error instanceof Error ? error.message : "Ошибка отправки в Telegram",
       );
+    } finally {
+      setPublishingTelegram(false);
     }
   };
 
@@ -410,7 +461,27 @@ const GuideEditPage: React.FC = () => {
 
             </Button>
 
-            <Button onClick={() => void handlePublishToTelegram()}>
+            <Select
+              placeholder="Канал Telegram"
+              style={{ minWidth: 220 }}
+              value={selectedChannelId}
+              onChange={setSelectedChannelId}
+              options={telegramChannels.map(channel => ({
+                value: channel.id,
+                label: channel.isDefault
+                  ? `${channel.name} (по умолчанию)`
+                  : channel.name,
+              }))}
+              disabled={telegramChannels.length === 0 || publishingTelegram}
+              notFoundContent="Нет активных каналов"
+            />
+
+            <Button
+              type="primary"
+              loading={publishingTelegram}
+              disabled={!selectedChannelId}
+              onClick={() => void handlePublishToTelegram()}
+            >
 
               Отправить в Telegram
 
@@ -447,6 +518,15 @@ const GuideEditPage: React.FC = () => {
         ) : null}
 
       </Space>
+
+      {guide && telegramChannels.length === 0 ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="Telegram-канал не настроен"
+          description="Добавьте бота и канал в разделе Сообщество → Telegram, затем вернитесь к публикации."
+        />
+      ) : null}
 
       <Card loading={loading}>
 

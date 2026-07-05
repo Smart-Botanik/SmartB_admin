@@ -128,6 +128,17 @@ const GuidesPage: React.FC = () => {
               <Tag color={status === "PUBLISHED" ? "green" : "default"}>{status}</Tag>
             ),
           },
+          {
+            title: "Telegram",
+            dataIndex: "telegramPublishedAt",
+            width: 110,
+            render: (value: string | null | undefined) =>
+              value ? (
+                <Tag color="blue">TG</Tag>
+              ) : (
+                <Text type="secondary">—</Text>
+              ),
+          },
           { title: "Порядок", dataIndex: "sortOrder", width: 90 },
         ]}
       />

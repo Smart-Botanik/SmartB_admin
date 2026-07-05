@@ -400,7 +400,7 @@ class ContentService {
 
 
 
-  async publishGuideToTelegram(id: string) {
+  async publishGuideToTelegram(id: string, channelId?: string | null) {
     const data = await graphqlClient.request<
       {
         publishCropGuideToTelegram: {
@@ -411,11 +411,11 @@ class ContentService {
           cropGuide: CropGuide;
         };
       },
-      { id: string }
+      { id: string; channelId?: string | null }
     >({
       query: `
-        mutation PublishCropGuideToTelegram($id: ID!) {
-          publishCropGuideToTelegram(id: $id) {
+        mutation PublishCropGuideToTelegram($id: ID!, $channelId: ID) {
+          publishCropGuideToTelegram(id: $id, channelId: $channelId) {
             success
             message
             telegramMessageId
@@ -424,7 +424,7 @@ class ContentService {
           }
         }
       `,
-      variables: { id },
+      variables: { id, channelId: channelId ?? undefined },
       operationName: "PublishCropGuideToTelegram",
     });
     return data.publishCropGuideToTelegram;
