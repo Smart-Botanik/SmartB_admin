@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Spin } from "antd";
 import {
   ADMIN_VUE_HOME_PAGE_PATH,
@@ -25,4 +26,9 @@ export function RedirectToVueTelegram() {
 
 export function RedirectToVueHomePage() {
   return <RedirectToVueRoute path={ADMIN_VUE_HOME_PAGE_PATH} />;
+}
+
+export function RedirectToVueGuides() {
+  const { pathname } = useLocation();
+  return <RedirectToVueRoute path={pathname} />;
 }

@@ -39,6 +39,7 @@ import {
   ADMIN_VUE_TAXONOMY_PATH,
   ADMIN_VUE_TELEGRAM_PATH,
   ADMIN_VUE_HOME_PAGE_PATH,
+  ADMIN_VUE_GUIDES_PATH,
   REACT_TO_VUE_MENU,
   crossAppLinkHref,
 } from "@growing/admin-shell";
@@ -383,9 +384,17 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       icon: <FileTextOutlined />,
       items: [
         {
-          key: "/content/guides",
-          icon: <FileTextOutlined />,
-          label: createMenuItemLabel("Руководства", "/content/guides"),
+          key: "vue-ext-guides",
+          icon: <LinkOutlined />,
+          label: createExternalMenuItemLabel(
+            "Руководства",
+            crossAppLinkHref({
+              key: "vue-guides",
+              label: "Руководства",
+              path: ADMIN_VUE_GUIDES_PATH,
+              app: "vue",
+            }),
+          ),
         },
         {
           key: "vue-ext-home-page",
@@ -564,7 +573,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       return "vue-ext-taxonomy";
     }
     if (location.pathname.startsWith("/content/guides")) {
-      return "/content/guides";
+      return "vue-ext-guides";
     }
     if (location.pathname.startsWith("/content/site-pages")) {
       return "vue-ext-home-page";

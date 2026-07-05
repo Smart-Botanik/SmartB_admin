@@ -44,12 +44,7 @@ import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathReg
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import FieldSpecsPage from "@/pages/Primitives/PrimitivesPage";
 import FieldPatternsPage from "@/pages/FieldPatterns/FieldPatternsPage";
-import { RedirectToVueTaxonomy, RedirectToVueTelegram, RedirectToVueHomePage } from "@/pages/RedirectToVueAdmin";
-import {
-  GuidesPage,
-  GuideCreatePage,
-  GuideEditPage,
-} from "@/pages/Content";
+import { RedirectToVueTaxonomy, RedirectToVueTelegram, RedirectToVueHomePage, RedirectToVueGuides } from "@/pages/RedirectToVueAdmin";
 import ProjectionStreamRegistryHubPage from "@/pages/ProjectionStreamRegistry/ProjectionStreamRegistryHubPage";
 import RegistryProfileBuilderPage from "@/pages/ProjectionStreamRegistry/RegistryProfileBuilderPage";
 import { UnauthorizedPage } from "@/pages/Unauthorized";
@@ -222,17 +217,17 @@ const App: React.FC = () => {
                           element={<UserCreatePage />}
                         />
                         <Route path="/media" element={<MediaLibrary />} />
-                        <Route path="/content/guides" element={<GuidesPage />} />
+                        <Route path="/content/guides" element={<RedirectToVueGuides />} />
                         <Route path="/entities/taxonomy" element={<RedirectToVueTaxonomy />} />
                         <Route path="/content/taxonomy" element={<RedirectToVueTaxonomy />} />
                         <Route path="/content/taxonomy-tags" element={<RedirectToVueTaxonomy />} />
                         <Route
                           path="/content/guides/create"
-                          element={<GuideCreatePage />}
+                          element={<RedirectToVueGuides />}
                         />
                         <Route
                           path="/content/guides/edit/:id"
-                          element={<GuideEditPage />}
+                          element={<RedirectToVueGuides />}
                         />
                         <Route
                           path="/content/site-pages/home"
