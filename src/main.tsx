@@ -44,12 +44,11 @@ import ActionPathRegistryEditPage from "@/pages/ActionPathRegistry/ActionPathReg
 import RegistryTagsPage, { RegistryTagIconsPage } from "@/pages/RegistryTags";
 import FieldSpecsPage from "@/pages/Primitives/PrimitivesPage";
 import FieldPatternsPage from "@/pages/FieldPatterns/FieldPatternsPage";
-import { RedirectToVueTaxonomy } from "@/pages/RedirectToVueAdmin";
+import { RedirectToVueTaxonomy, RedirectToVueTelegram, RedirectToVueHomePage } from "@/pages/RedirectToVueAdmin";
 import {
   GuidesPage,
   GuideCreatePage,
   GuideEditPage,
-  HomePageEditor,
 } from "@/pages/Content";
 import ProjectionStreamRegistryHubPage from "@/pages/ProjectionStreamRegistry/ProjectionStreamRegistryHubPage";
 import RegistryProfileBuilderPage from "@/pages/ProjectionStreamRegistry/RegistryProfileBuilderPage";
@@ -237,7 +236,11 @@ const App: React.FC = () => {
                         />
                         <Route
                           path="/content/site-pages/home"
-                          element={<HomePageEditor />}
+                          element={<RedirectToVueHomePage />}
+                        />
+                        <Route
+                          path="/community/telegram"
+                          element={<RedirectToVueTelegram />}
                         />
                         <Route path="/events" element={<EventsListPage />} />
                         <Route

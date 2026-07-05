@@ -37,6 +37,8 @@ import {
 import type { MenuProps } from "antd";
 import {
   ADMIN_VUE_TAXONOMY_PATH,
+  ADMIN_VUE_TELEGRAM_PATH,
+  ADMIN_VUE_HOME_PAGE_PATH,
   REACT_TO_VUE_MENU,
   crossAppLinkHref,
 } from "@growing/admin-shell";
@@ -386,9 +388,38 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
           label: createMenuItemLabel("Руководства", "/content/guides"),
         },
         {
-          key: "/content/site-pages/home",
-          icon: <DashboardOutlined />,
-          label: createMenuItemLabel("Главная страница", "/content/site-pages/home"),
+          key: "vue-ext-home-page",
+          icon: <LinkOutlined />,
+          label: createExternalMenuItemLabel(
+            "Главная страница",
+            crossAppLinkHref({
+              key: "vue-home-page",
+              label: "Главная страница",
+              path: ADMIN_VUE_HOME_PAGE_PATH,
+              app: "vue",
+            }),
+          ),
+        },
+      ],
+    },
+    {
+      key: "community",
+      title: "Сообщество",
+      menuKey: "section-community",
+      icon: <ThunderboltOutlined />,
+      items: [
+        {
+          key: "vue-ext-telegram",
+          icon: <LinkOutlined />,
+          label: createExternalMenuItemLabel(
+            "Telegram",
+            crossAppLinkHref({
+              key: "vue-telegram",
+              label: "Telegram",
+              path: ADMIN_VUE_TELEGRAM_PATH,
+              app: "vue",
+            }),
+          ),
         },
       ],
     },
@@ -536,7 +567,10 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       return "/content/guides";
     }
     if (location.pathname.startsWith("/content/site-pages")) {
-      return "/content/site-pages/home";
+      return "vue-ext-home-page";
+    }
+    if (location.pathname.startsWith("/community/telegram")) {
+      return "vue-ext-telegram";
     }
     if (location.pathname.startsWith("/media")) {
       return "/media";
