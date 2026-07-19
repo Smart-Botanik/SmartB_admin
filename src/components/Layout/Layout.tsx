@@ -56,6 +56,7 @@ type SectionKey =
   | "work-zone"
   | "entities"
   | "content"
+  | "community"
   | "media"
   | "admin-section"
   | "admin-vue";
@@ -66,6 +67,7 @@ const SECTION_MENU_KEYS = [
   "section-work-zone",
   "section-entities",
   "section-content",
+  "section-community",
   "section-media",
   "section-admin-section",
   "section-admin-vue",
@@ -94,6 +96,7 @@ const LayoutComponent: React.FC<{ children?: React.ReactNode }> = ({
       "work-zone": false,
       entities: false,
       content: false,
+      community: false,
       media: false,
       "admin-section": false,
       "admin-vue": false,

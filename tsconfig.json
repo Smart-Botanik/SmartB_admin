@@ -19,11 +19,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "types": ["node"],
 
-    /* Path mapping */
-    "baseUrl": ".",
+    /* Path mapping (project-root relative; no baseUrl — TS 6/7) */
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["./src/*"],
       "@growing/admin-shell": ["../packages/admin-shell/src/index.ts"],
       "@growing/contracts": ["../packages/contracts/src/index.ts"],
       "@growing/ui": ["../packages/ui/src/index.ts"]
